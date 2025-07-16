@@ -560,3 +560,66 @@ impl TaskReportTable {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_format_duration_basic_cases() {
+    // Test basic second formatting
+    assert_eq!(format_duration(0, false), "0s");
+    assert_eq!(format_duration(30, false), "30s");
+    
+    // Test minute formatting
+    assert_eq!(format_duration(60, false), "1min");
+    assert_eq!(format_duration(90, false), "1min");
+    assert_eq!(format_duration(90, true), "1min30s");
+    
+    // Test hour formatting
+    assert_eq!(format_duration(3600, false), "1h");
+    assert_eq!(format_duration(3661, false), "1h");
+    assert_eq!(format_duration(3661, true), "1h1min");
+    
+    // Test the specific case from GitHub issue #618
+    assert_eq!(format_duration(1255, false), "20min");
+    assert_eq!(format_duration(1255, true), "20min55s");
+  }
+
+  #[test]
+  fn test_format_duration_edge_cases() {
+    // Test negative durations
+    assert_eq!(format_duration(-300, false), "-5min");
+    assert_eq!(format_duration(-3661, true), "-1h1min");
+    
+    // Test larger time units
+    assert_eq!(format_duration(86400, false), "1d"); // 1 day
+    assert_eq!(format_duration(604800, false), "7d"); // 1 week shows as 7 days
+    assert_eq!(format_duration(1209600, false), "2w"); // 2 weeks
+    assert_eq!(format_duration(2592000, false), "4w"); // 1 month shows as 4 weeks
+    assert_eq!(format_duration(7776000, false), "3mo"); // 3 months
+    assert_eq!(format_duration(31536000, false), "1y"); // 1 year
+    
+    // Test with remainder for larger units
+    assert_eq!(format_duration(90061, true), "1d1h"); // 1d + 1h + 1m + 1s
+  }
+
+  #[test]
+  fn test_is_duration_field() {
+    // Test fields that should be detected as duration
+    assert!(TaskReportTable::is_duration_field("totalactivetime"));
+    assert!(TaskReportTable::is_duration_field("totaltime"));
+    assert!(TaskReportTable::is_duration_field("worktime"));
+    assert!(TaskReportTable::is_duration_field("elapsed"));
+    assert!(TaskReportTable::is_duration_field("customactivetime"));
+    assert!(TaskReportTable::is_duration_field("anyduration"));
+    
+    // Test fields that should NOT be detected as duration
+    assert!(!TaskReportTable::is_duration_field("description"));
+    assert!(!TaskReportTable::is_duration_field("priority"));
+    assert!(!TaskReportTable::is_duration_field("project"));
+    assert!(!TaskReportTable::is_duration_field("status"));
+    assert!(!TaskReportTable::is_duration_field("id"));
+    assert!(!TaskReportTable::is_duration_field("urgency"));
+  }
+}
