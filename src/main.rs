@@ -5,6 +5,7 @@
 
 mod action;
 mod app;
+mod backend;
 mod calendar;
 mod cli;
 mod completion;

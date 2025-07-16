@@ -41,6 +41,7 @@ use versions::Versioning;
 
 use crate::{
   action::Action,
+  backend::{self, BackendConfig},
   calendar::Calendar,
   completion::{get_start_word_under_cursor, CompletionList},
   config,
@@ -207,6 +208,7 @@ pub struct TaskwarriorTui {
   pub event_loop: crate::event::EventLoop,
   pub requires_redraw: bool,
   pub changes: utils::Changeset,
+  pub backend: Box<dyn crate::backend::TaskBackend>,
 }
 
 impl TaskwarriorTui {
@@ -251,6 +253,34 @@ impl TaskwarriorTui {
     };
     let event_loop = crate::event::EventLoop::new(tick_rate, init_event_loop);
 
+    // Initialize backend based on configuration
+    debug!("=== BACKEND INITIALIZATION ===");
+    debug!("uda_backend config: '{}'", c.uda_backend);
+    let backend_config = match c.uda_backend.as_str() {
+      "taskchampion" => {
+        #[cfg(feature = "taskchampion-backend")]
+        {
+          info!("Using TaskChampion backend");
+          BackendConfig::TaskChampion {
+            data_dir: c.uda_taskchampion_data_dir.as_ref().map(|s| std::path::PathBuf::from(s)),
+            server_config: c.uda_taskchampion_server_config.clone(),
+          }
+        }
+        #[cfg(not(feature = "taskchampion-backend"))]
+        {
+          warn!("TaskChampion backend requested but feature not enabled, falling back to CLI");
+          BackendConfig::Cli
+        }
+      }
+      _ => {
+        info!("Using CLI backend");
+        BackendConfig::Cli
+      }
+    };
+    debug!("Backend config: {:?}", backend_config);
+    let backend = backend::create_backend(backend_config)?;
+    debug!("=== BACKEND INITIALIZED ===");
+
     let mut app = Self {
       should_quit: false,
       dirty: true,
@@ -293,6 +323,7 @@ impl TaskwarriorTui {
       event_loop,
       requires_redraw: false,
       changes: utils::Changeset::default(),
+      backend,
     };
 
     for c in app.config.filter.chars() {
@@ -1710,66 +1741,40 @@ impl TaskwarriorTui {
   }
 
   pub fn export_tasks(&mut self) -> Result<()> {
-    let mut task = std::process::Command::new("task");
-
-    task
-      .arg("rc.json.array=on")
-      .arg("rc.confirmation=off")
-      .arg("rc.json.depends.array=on")
-      .arg("rc.color=off")
-      .arg("rc._forcecolor=off");
-    // .arg("rc.verbose:override=false");
-
-    if let Some(args) = shlex::split(format!(r#"rc.report.{}.filter='{}'"#, self.report, self.filter.trim()).trim()) {
-      for arg in args {
-        task.arg(arg);
-      }
-    }
-
-    if !self.current_context_filter.trim().is_empty() && self.task_version >= *TASKWARRIOR_VERSION_SUPPORTED {
-      if let Some(args) = shlex::split(&self.current_context_filter) {
-        for arg in args {
-          task.arg(arg);
+    debug!("=== EXPORT_TASKS DEBUG ===");
+    debug!("Filter: '{}'", self.filter.to_string());
+    debug!("Report: '{}'", self.report);
+    debug!("Context filter: '{}'", self.current_context_filter);
+    
+    match self.backend.export_tasks(&self.filter.to_string(), &self.report, &self.current_context_filter) {
+      Ok(tasks) => {
+        debug!("Backend returned {} tasks", tasks.len());
+        if tasks.is_empty() {
+          warn!("Backend returned empty task list - this may cause blank TUI");
+        } else {
+          debug!("First 3 task descriptions: {:?}", 
+            tasks.iter().take(3).map(|t| t.description()).collect::<Vec<_>>());
+        }
+        
+        self.tasks = tasks;
+        info!("Exported {} tasks", self.tasks.len());
+        debug!("App now has {} tasks in self.tasks", self.tasks.len());
+        
+        self.error = None;
+        if self.mode == Mode::Tasks(Action::Error) {
+          self.mode = self.previous_mode.clone().unwrap_or(Mode::Tasks(Action::Report));
+          self.previous_mode = None;
         }
       }
-    } else if !self.current_context_filter.trim().is_empty() {
-      task.arg(format!("'\\({}\\)'", self.current_context_filter));
-    }
-
-    task.arg("export");
-
-    if self.task_version >= *TASKWARRIOR_VERSION_SUPPORTED {
-      task.arg(&self.report);
-    }
-
-    info!("Running `{:#?}`", task);
-    let output = task.output()?;
-    let data = String::from_utf8_lossy(&output.stdout);
-    let error = String::from_utf8_lossy(&output.stderr);
-
-    if output.status.success() {
-      let imported = import(data.as_bytes());
-      match imported {
-        Ok(imported) => {
-          self.tasks = imported;
-          info!("Imported {} tasks", self.tasks.len());
-          self.error = None;
-          if self.mode == Mode::Tasks(Action::Error) {
-            self.mode = self.previous_mode.clone().unwrap_or(Mode::Tasks(Action::Report));
-            self.previous_mode = None;
-          }
-        }
-        Err(err) => {
-          self.error = Some(format!("Unable to parse output of `{:?}`:\n`{:?}`", task, data));
-          self.mode = Mode::Tasks(Action::Error);
-          debug!("Unable to parse output:\n\n{}", data);
-          debug!("Error: {:?}", err);
-        }
+      Err(err) => {
+        error!("Backend export failed: {:?}", err);
+        self.error = Some(format!("Unable to export tasks: {:?}", err));
+        self.mode = Mode::Tasks(Action::Error);
+        debug!("Export error: {:?}", err);
       }
-    } else {
-      self.error = Some(format!("Cannot run `{:?}` - ({}) error:\n{}", &task, output.status, error));
     }
-
+    
+    debug!("=== END EXPORT_TASKS DEBUG ===");
     Ok(())
   }
 
@@ -1956,40 +1961,11 @@ impl TaskwarriorTui {
     }
 
     let task_uuids = self.selected_task_uuids();
-
-    let mut command = std::process::Command::new("task");
-    command.arg("rc.bulk=0");
-    command.arg("rc.confirmation=off");
-    command.arg("rc.dependency.confirmation=off");
-    command.arg("rc.recurrence.confirmation=off");
-    for task_uuid in &task_uuids {
-      command.arg(task_uuid.to_string());
-    }
-    command.arg("modify");
-
     let shell = self.modify.as_str();
 
-    let r = match shlex::split(shell) {
-      Some(cmd) => {
-        for s in cmd {
-          command.arg(&s);
-        }
-        let output = command.output();
-        match output {
-          Ok(o) => {
-            if o.status.success() {
-              Ok(())
-            } else {
-              Err(format!("Modify failed. {}", String::from_utf8_lossy(&o.stdout)))
-            }
-          }
-          Err(_) => Err(format!(
-            "Cannot run `task {:?} modify {}`. Check documentation for more information",
-            task_uuids, shell,
-          )),
-        }
-      }
-      None => Err(format!("Cannot shlex split `{}`", shell)),
+    let r = match self.backend.modify_tasks(&task_uuids, shell) {
+      Ok(()) => Ok(()),
+      Err(err) => Err(format!("Cannot modify task: {}", err)),
     };
 
     if task_uuids.len() == 1 {
@@ -2053,36 +2029,27 @@ impl TaskwarriorTui {
   }
 
   pub fn task_add(&mut self) -> Result<(), String> {
-    let mut command = std::process::Command::new("task");
-    command.arg("add");
-
     let shell = self.command.as_str();
 
     match shlex::split(shell) {
       Some(cmd) => {
-        for s in cmd {
-          command.arg(&s);
+        if cmd.is_empty() {
+          return Err("No task description provided".to_string());
         }
-        let output = command.output();
-        match output {
-          Ok(output) => {
-            if output.status.code() == Some(0) {
-              let data = String::from_utf8_lossy(&output.stdout);
-              let re = Regex::new(r"^Created task (?P<task_id>\d+).\n$").unwrap();
-              if self.config.uda_task_report_jump_to_task_on_add {
-                if let Some(caps) = re.captures(&data) {
-                  self.current_selection_id = Some(caps["task_id"].parse::<u64>().unwrap_or_default());
-                }
-              }
-              Ok(())
-            } else {
-              Err(format!("Error: {}", String::from_utf8_lossy(&output.stderr)))
-            }
+        
+        let description = &cmd[0];
+        let args: Vec<&str> = cmd.iter().skip(1).map(|s| s.as_str()).collect();
+        
+        match self.backend.add_task(description, &args) {
+          Ok(()) => {
+            // TODO: Implement task ID tracking for jump-to-task feature
+            self.current_selection_id = None;
+            Ok(())
           }
-          Err(e) => Err(format!("Cannot run `{:?}`: {}", command, e)),
+          Err(err) => Err(format!("Cannot add task: {}", err)),
         }
       }
-      None => Err(format!("Unable to run `{:?}`: shlex::split(`{}`) failed.", command, shell)),
+      None => Err(format!("Unable to parse command: shlex::split(`{}`) failed.", shell)),
     }
   }
 
@@ -2187,22 +2154,11 @@ impl TaskwarriorTui {
 
     let task_uuids = self.selected_task_uuids();
 
-    let mut cmd = std::process::Command::new("task");
-    cmd
-      .arg("rc.bulk=0")
-      .arg("rc.confirmation=off")
-      .arg("rc.dependency.confirmation=off")
-      .arg("rc.recurrence.confirmation=off");
-    for task_uuid in &task_uuids {
-      cmd.arg(task_uuid.to_string());
-    }
-    cmd.arg("delete");
-    let output = cmd.output();
-    let r = match output {
-      Ok(_) => Ok(()),
-      Err(_) => Err(format!(
-        "Cannot run `task delete` for tasks `{}`. Check documentation for more information",
-        task_uuids.iter().map(ToString::to_string).collect::<Vec<String>>().join(" ")
+    let r = match self.backend.delete_tasks(&task_uuids) {
+      Ok(()) => Ok(()),
+      Err(err) => Err(format!(
+        "Cannot delete task: {}",
+        err
       )),
     };
     self.current_selection_uuid = None;
@@ -2215,22 +2171,11 @@ impl TaskwarriorTui {
       return Ok(());
     }
     let task_uuids = self.selected_task_uuids();
-    let mut cmd = std::process::Command::new("task");
-    cmd
-      .arg("rc.bulk=0")
-      .arg("rc.confirmation=off")
-      .arg("rc.dependency.confirmation=off")
-      .arg("rc.recurrence.confirmation=off");
-    for task_uuid in &task_uuids {
-      cmd.arg(task_uuid.to_string());
-    }
-    cmd.arg("done");
-    let output = cmd.output();
-    let r = match output {
-      Ok(_) => Ok(()),
-      Err(_) => Err(format!(
-        "Cannot run `task done` for task `{}`. Check documentation for more information",
-        task_uuids.iter().map(ToString::to_string).collect::<Vec<String>>().join(" ")
+    let r = match self.backend.mark_done(&task_uuids) {
+      Ok(()) => Ok(()),
+      Err(err) => Err(format!(
+        "Cannot mark task as done: {}",
+        err
       )),
     };
     self.current_selection_uuid = None;

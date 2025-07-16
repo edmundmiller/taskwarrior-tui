@@ -75,6 +75,9 @@ pub struct Config {
   pub uda_scrollbar_area: String,
   pub uda_style_report_scrollbar: Style,
   pub uda_style_report_scrollbar_area: Style,
+  pub uda_backend: String,
+  pub uda_taskchampion_data_dir: Option<String>,
+  pub uda_taskchampion_server_config: Option<String>,
   pub uda_selection_bold: bool,
   pub uda_selection_italic: bool,
   pub uda_selection_dim: bool,
@@ -183,15 +186,25 @@ impl Config {
     let uda_context_menu_select_on_move = Self::get_uda_context_menu_select_on_move(data);
     let uda_task_report_date_time_vague_more_precise = Self::get_uda_task_report_date_time_vague_more_precise(data);
     let uda_task_report_duration_human_readable = Self::get_uda_task_report_duration_human_readable(data);
-    
+
     // Extract calendar colors from the color collection with sensible defaults
-    let color_calendar_due_today = color.get("color.calendar.due.today").cloned()
+    let color_calendar_due_today = color
+      .get("color.calendar.due.today")
+      .cloned()
       .or_else(|| Some(Style::default().fg(Color::Black).bg(Color::Yellow)));
-    let color_calendar_overdue = color.get("color.calendar.overdue").cloned()
+    let color_calendar_overdue = color
+      .get("color.calendar.overdue")
+      .cloned()
       .or_else(|| Some(Style::default().fg(Color::White).bg(Color::Red)));
     let color_calendar_holiday = color.get("color.calendar.holiday").cloned();
-    let color_calendar_weekend = color.get("color.calendar.weekend").cloned()
+    let color_calendar_weekend = color
+      .get("color.calendar.weekend")
+      .cloned()
       .or_else(|| Some(Style::default().fg(Color::DarkGray)));
+
+    let uda_backend = Self::get_uda_backend(data);
+    let uda_taskchampion_data_dir = Self::get_uda_taskchampion_data_dir(data);
+    let uda_taskchampion_server_config = Self::get_uda_taskchampion_server_config(data);
 
     Ok(Self {
       enabled,
@@ -243,6 +256,9 @@ impl Config {
       uda_style_report_completion_pane_highlight,
       uda_style_report_scrollbar,
       uda_style_report_scrollbar_area,
+      uda_backend,
+      uda_taskchampion_data_dir,
+      uda_taskchampion_server_config,
       uda_shortcuts,
       uda_background_process,
       uda_background_process_period,
@@ -615,6 +631,27 @@ impl Config {
       .unwrap_or_default()
       .get_bool()
       .unwrap_or(true)
+  }
+
+  fn get_uda_backend(data: &str) -> String {
+    Self::get_config("uda.taskwarrior-tui.backend", data).unwrap_or_else(|| {
+      #[cfg(feature = "taskchampion-backend")]
+      {
+        "taskchampion".to_string()
+      }
+      #[cfg(not(feature = "taskchampion-backend"))]
+      {
+        "cli".to_string()
+      }
+    })
+  }
+
+  fn get_uda_taskchampion_data_dir(data: &str) -> Option<String> {
+    Self::get_config("uda.taskwarrior-tui.taskchampion.data-dir", data)
+  }
+
+  fn get_uda_taskchampion_server_config(data: &str) -> Option<String> {
+    Self::get_config("uda.taskwarrior-tui.taskchampion.server-config", data)
   }
 
   fn get_uda_task_report_prompt_on_done(data: &str) -> bool {
