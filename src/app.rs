@@ -858,9 +858,13 @@ impl TaskwarriorTui {
   }
 
   pub fn get_dates_with_styles(&self) -> Vec<(chrono::NaiveDate, Style)> {
+    use chrono::Datelike;
+    
+    let mut date_styles = Vec::new();
+    
     if !self.tasks.is_empty() {
       let tasks = &self.tasks;
-      tasks
+      let task_dates: Vec<(chrono::NaiveDate, Style)> = tasks
         .iter()
         .filter_map(|t| t.due().map(|d| (d.clone(), self.style_for_task(t))))
         .map(|(d, t)| {
@@ -868,10 +872,42 @@ impl TaskwarriorTui {
           let reference = TimeZone::from_utc_datetime(now.offset(), &d);
           (reference.date_naive(), t)
         })
-        .collect()
-    } else {
-      vec![]
+        .collect();
+      
+      // Apply calendar-specific color overrides
+      for (date, mut style) in task_dates {
+        let now = Local::now().date_naive();
+        
+        // Check if this date should use calendar-specific colors
+        let is_overdue = date < now;
+        let is_due_today = date == now;
+        let is_weekend = date.weekday() == chrono::Weekday::Sat || date.weekday() == chrono::Weekday::Sun;
+        
+        // Apply calendar colors in order of precedence
+        if is_overdue {
+          if let Some(overdue_style) = self.config.color_calendar_overdue {
+            style = overdue_style;
+          }
+        } else if is_due_today {
+          if let Some(due_today_style) = self.config.color_calendar_due_today {
+            style = due_today_style;
+          }
+        }
+        
+        if is_weekend {
+          if let Some(weekend_style) = self.config.color_calendar_weekend {
+            style = weekend_style;
+          }
+        }
+        
+        // Note: Holiday detection would require external calendar data
+        // For now, we'll skip holiday colors as they would need additional configuration
+        
+        date_styles.push((date, style));
+      }
     }
+    
+    date_styles
   }
 
   pub fn get_position(lb: &LineBuffer) -> usize {

@@ -24,3 +24,51 @@ color.blocking
 color.recurring
 color.tagged
 ```
+
+## Calendar Colors
+
+`taskwarrior-tui` supports calendar-specific color settings that override task colors in the calendar view:
+
+```plaintext
+color.calendar.due.today
+color.calendar.overdue
+color.calendar.weekend
+color.calendar.holiday
+```
+
+### Calendar Color Examples
+
+To set calendar colors, add these to your `~/.taskrc` file:
+
+```bash
+# Highlight tasks due today in the calendar
+color.calendar.due.today=color0 on color252
+
+# Make overdue tasks stand out in red
+color.calendar.overdue=color1 on color0
+
+# Subtle styling for weekend dates
+color.calendar.weekend=color8 on color0
+
+# Special highlighting for holidays
+color.calendar.holiday=rgb522 on rgb300
+```
+
+### Calendar Color Precedence
+
+Calendar colors follow this precedence order:
+1. `color.calendar.overdue` - applied to overdue tasks
+2. `color.calendar.due.today` - applied to tasks due today
+3. `color.calendar.weekend` - applied to weekend dates
+4. `color.calendar.holiday` - applied to holiday dates (requires external calendar data)
+
+### Default Calendar Colors
+
+If no calendar-specific color is set, `taskwarrior-tui` provides these sensible defaults:
+
+- **Due Today**: Black text on yellow background (highlights urgency)
+- **Overdue**: White text on red background (clear warning)
+- **Weekend**: Dark gray text (subtle, less prominent)
+- **Holiday**: No default (requires user configuration)
+
+If you don't want these defaults, you can override them by setting the corresponding `color.calendar.*` values in your `~/.taskrc` file. To disable a default color, you can set it to the same as your default text color.

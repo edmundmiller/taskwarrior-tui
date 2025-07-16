@@ -85,6 +85,10 @@ pub struct Config {
   pub uda_style_report_selection: Style,
   pub uda_style_calendar_title: Style,
   pub uda_style_calendar_today: Style,
+  pub color_calendar_due_today: Option<Style>,
+  pub color_calendar_overdue: Option<Style>,
+  pub color_calendar_holiday: Option<Style>,
+  pub color_calendar_weekend: Option<Style>,
   pub uda_style_navbar: Style,
   pub uda_style_command: Style,
   pub uda_style_report_completion_pane: Style,
@@ -177,6 +181,15 @@ impl Config {
     let uda_task_report_prompt_on_done = Self::get_uda_task_report_prompt_on_done(data);
     let uda_context_menu_select_on_move = Self::get_uda_context_menu_select_on_move(data);
     let uda_task_report_date_time_vague_more_precise = Self::get_uda_task_report_date_time_vague_more_precise(data);
+    
+    // Extract calendar colors from the color collection with sensible defaults
+    let color_calendar_due_today = color.get("color.calendar.due.today").cloned()
+      .or_else(|| Some(Style::default().fg(Color::Black).bg(Color::Yellow)));
+    let color_calendar_overdue = color.get("color.calendar.overdue").cloned()
+      .or_else(|| Some(Style::default().fg(Color::White).bg(Color::Red)));
+    let color_calendar_holiday = color.get("color.calendar.holiday").cloned();
+    let color_calendar_weekend = color.get("color.calendar.weekend").cloned()
+      .or_else(|| Some(Style::default().fg(Color::DarkGray)));
 
     Ok(Self {
       enabled,
@@ -218,6 +231,10 @@ impl Config {
       uda_style_context_active,
       uda_style_calendar_title,
       uda_style_calendar_today,
+      color_calendar_due_today,
+      color_calendar_overdue,
+      color_calendar_holiday,
+      color_calendar_weekend,
       uda_style_navbar,
       uda_style_command,
       uda_style_report_completion_pane,
