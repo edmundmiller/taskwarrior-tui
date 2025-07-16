@@ -81,6 +81,67 @@ pub fn vague_format_date_time(from_dt: NaiveDateTime, to_dt: NaiveDateTime, with
   format!("{}{}s", minus, seconds)
 }
 
+pub fn format_duration(seconds: i64, with_remainder: bool) -> String {
+  let mut seconds = seconds;
+  let minus = if seconds < 0 {
+    seconds *= -1;
+    "-"
+  } else {
+    ""
+  };
+
+  const YEAR: i64 =  60 * 60 * 24 * 365;
+  const MONTH: i64 = 60 * 60 * 24 * 30;
+  const WEEK: i64 = 60 * 60 * 24 * 7;
+  const DAY: i64 = 60 * 60 * 24;
+  const HOUR: i64 = 60 * 60;
+  const MINUTE: i64 = 60;
+
+  if seconds >= YEAR {
+    return if with_remainder {
+      format!("{}{}y{}mo", minus, seconds / YEAR, (seconds - YEAR * (seconds / YEAR)) / MONTH)
+    } else {
+      format!("{}{}y", minus, seconds / YEAR)
+    };
+  }
+  if seconds >= MONTH * 3 {
+    return if with_remainder {
+      format!("{}{}mo{}w", minus, seconds / MONTH, (seconds - MONTH * (seconds / MONTH)) / WEEK)
+    } else {
+      format!("{}{}mo", minus, seconds / MONTH)
+    };
+  }
+  if seconds >= WEEK * 2 {
+    return if with_remainder {
+      format!("{}{}w{}d", minus, seconds / WEEK, (seconds - WEEK * (seconds / WEEK)) / DAY)
+    } else {
+      format!("{}{}w", minus, seconds / WEEK)
+    };
+  }
+  if seconds >= DAY {
+    return if with_remainder {
+      format!("{}{}d{}h", minus, seconds / DAY, (seconds - DAY * (seconds / DAY)) / HOUR)
+    } else {
+      format!("{}{}d", minus, seconds / DAY)
+    };
+  }
+  if seconds >= HOUR {
+    return if with_remainder {
+      format!("{}{}h{}min", minus, seconds / HOUR, (seconds - HOUR * (seconds / HOUR)) / MINUTE)
+    } else {
+      format!("{}{}h", minus, seconds / HOUR)
+    };
+  }
+  if seconds >= MINUTE {
+    return if with_remainder {
+      format!("{}{}min{}s", minus, seconds / MINUTE, (seconds - MINUTE * (seconds / MINUTE)))
+    } else {
+      format!("{}{}min", minus, seconds / MINUTE)
+    };
+  }
+  format!("{}{}s", minus, seconds)
+}
+
 pub struct TaskReportTable {
   pub labels: Vec<String>,
   pub columns: Vec<String>,
@@ -88,6 +149,7 @@ pub struct TaskReportTable {
   pub virtual_tags: Vec<String>,
   pub description_width: usize,
   pub date_time_vague_precise: bool,
+  pub duration_human_readable: bool,
 }
 
 impl TaskReportTable {
@@ -135,6 +197,7 @@ impl TaskReportTable {
       virtual_tags: virtual_tags.iter().map(ToString::to_string).collect::<Vec<_>>(),
       description_width: 100,
       date_time_vague_precise: false,
+      duration_human_readable: true,
     };
     task_report_table.export_headers(Some(data), report)?;
     Ok(task_report_table)
@@ -255,6 +318,18 @@ impl TaskReportTable {
       .collect();
 
     (tasks, headers)
+  }
+
+  fn is_duration_field(attribute: &str) -> bool {
+    // Check for common duration field patterns
+    attribute.contains("time") || 
+    attribute.contains("duration") ||
+    attribute.ends_with("activetime") ||
+    attribute.ends_with("totaltime") ||
+    attribute.ends_with("worktime") ||
+    attribute.ends_with("elapsed") ||
+    attribute == "totalactivetime" ||
+    attribute == "totaltime"
   }
 
   pub fn get_string_attribute(&self, attribute: &str, task: &Task, tasks: &[Task]) -> String {
@@ -453,9 +528,33 @@ impl TaskReportTable {
           return "".to_string();
         }
         match v.unwrap() {
-          UDAValue::Str(s) => s.to_string(),
-          UDAValue::F64(f) => f.to_string(),
-          UDAValue::U64(u) => u.to_string(),
+          UDAValue::Str(s) => {
+            // Check if this is a duration field that should be formatted
+            if self.duration_human_readable && Self::is_duration_field(attribute) {
+              // Try to parse as seconds and format as human readable duration
+              if let Ok(seconds) = s.parse::<i64>() {
+                format_duration(seconds, self.date_time_vague_precise)
+              } else {
+                s.to_string()
+              }
+            } else {
+              s.to_string()
+            }
+          },
+          UDAValue::F64(f) => {
+            if self.duration_human_readable && Self::is_duration_field(attribute) {
+              format_duration(*f as i64, self.date_time_vague_precise)
+            } else {
+              f.to_string()
+            }
+          },
+          UDAValue::U64(u) => {
+            if self.duration_human_readable && Self::is_duration_field(attribute) {
+              format_duration(*u as i64, self.date_time_vague_precise)
+            } else {
+              u.to_string()
+            }
+          },
         }
       }
     }

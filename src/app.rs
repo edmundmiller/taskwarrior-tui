@@ -300,6 +300,7 @@ impl TaskwarriorTui {
     }
 
     app.task_report_table.date_time_vague_precise = app.config.uda_task_report_date_time_vague_more_precise;
+    app.task_report_table.duration_human_readable = app.config.uda_task_report_duration_human_readable;
 
     app.update(true).await?;
 

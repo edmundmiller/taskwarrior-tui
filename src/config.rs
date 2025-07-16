@@ -102,6 +102,7 @@ pub struct Config {
   pub uda_task_report_prompt_on_delete: bool,
   pub uda_task_report_prompt_on_done: bool,
   pub uda_task_report_date_time_vague_more_precise: bool,
+  pub uda_task_report_duration_human_readable: bool,
   pub uda_context_menu_select_on_move: bool,
   pub uda: Vec<Uda>,
 }
@@ -181,6 +182,7 @@ impl Config {
     let uda_task_report_prompt_on_done = Self::get_uda_task_report_prompt_on_done(data);
     let uda_context_menu_select_on_move = Self::get_uda_context_menu_select_on_move(data);
     let uda_task_report_date_time_vague_more_precise = Self::get_uda_task_report_date_time_vague_more_precise(data);
+    let uda_task_report_duration_human_readable = Self::get_uda_task_report_duration_human_readable(data);
     
     // Extract calendar colors from the color collection with sensible defaults
     let color_calendar_due_today = color.get("color.calendar.due.today").cloned()
@@ -249,6 +251,7 @@ impl Config {
       uda_task_report_prompt_on_delete,
       uda_task_report_prompt_on_done,
       uda_task_report_date_time_vague_more_precise,
+      uda_task_report_duration_human_readable,
       uda_context_menu_select_on_move,
       uda: vec![],
     })
@@ -605,6 +608,13 @@ impl Config {
       .unwrap_or_default()
       .get_bool()
       .unwrap_or(false)
+  }
+
+  fn get_uda_task_report_duration_human_readable(data: &str) -> bool {
+    Self::get_config("uda.taskwarrior-tui.task-report.duration-human-readable", data)
+      .unwrap_or_default()
+      .get_bool()
+      .unwrap_or(true)
   }
 
   fn get_uda_task_report_prompt_on_done(data: &str) -> bool {
