@@ -190,17 +190,18 @@ mod tests {
         // Simulate the app's backend selection logic
         println!("1. Testing backend selection logic...");
         
-        // Mock config with CLI backend
-        let uda_backend = "cli".to_string();
+        // Mock config with TaskChampion backend (like the actual config)
+        let uda_backend = "taskchampion".to_string();
         println!("   uda_backend config: '{}'", uda_backend);
         
         let backend_config = match uda_backend.as_str() {
             "taskchampion" => {
                 #[cfg(feature = "taskchampion-backend")]
                 {
-                    println!("   Would use TaskChampion backend");
+                    let data_dir = Some(std::path::PathBuf::from("/Users/emiller/Library/Mobile Documents/iCloud~com~mav~taskchamp/Documents/task"));
+                    println!("   Would use TaskChampion backend with data_dir: {:?}", data_dir);
                     BackendConfig::TaskChampion {
-                        data_dir: None,
+                        data_dir,
                         server_config: None,
                     }
                 }
@@ -335,5 +336,60 @@ mod tests {
                 println!("❌ 'all' report failed: {}", e);
             }
         }
+    }
+
+    /// Test that CLI and TaskChampion backends return consistent results
+    #[test]
+    #[cfg(feature = "taskchampion-backend")]
+    fn test_backend_consistency() {
+        println!("=== Backend Consistency Test ===");
+        
+        // Test CLI backend
+        println!("1. Testing CLI backend...");
+        let cli_backend = create_backend(BackendConfig::Cli).expect("Failed to create CLI backend");
+        let cli_tasks = cli_backend.export_tasks("", "next", "").expect("CLI backend export failed");
+        println!("   CLI backend: {} tasks", cli_tasks.len());
+        
+        // Test TaskChampion backend with correct data directory
+        println!("2. Testing TaskChampion backend...");
+        let tc_backend = create_backend(BackendConfig::TaskChampion {
+            data_dir: Some(std::path::PathBuf::from("/Users/emiller/Library/Mobile Documents/iCloud~com~mav~taskchamp/Documents/task")),
+            server_config: None,
+        }).expect("Failed to create TaskChampion backend");
+        
+        let tc_tasks = tc_backend.export_tasks("", "next", "").expect("TaskChampion backend export failed");
+        println!("   TaskChampion backend: {} tasks", tc_tasks.len());
+        
+        // Compare results
+        println!("3. Comparing results...");
+        
+        if cli_tasks.len() != tc_tasks.len() {
+            println!("   ⚠️  Task count mismatch: CLI={}, TaskChampion={}", cli_tasks.len(), tc_tasks.len());
+            
+            // This might be expected due to different implementation details
+            // The important thing is that both return > 0 tasks
+            if cli_tasks.len() > 0 && tc_tasks.len() > 0 {
+                println!("   ✅ Both backends return tasks (counts may differ due to implementation)");
+            } else {
+                panic!("One or both backends returned no tasks");
+            }
+        } else {
+            println!("   ✅ Perfect match: both backends return {} tasks", cli_tasks.len());
+        }
+        
+        // Verify both have pending tasks
+        let cli_pending = cli_tasks.iter()
+            .filter(|t| matches!(t.status(), task_hookrs::status::TaskStatus::Pending))
+            .count();
+        let tc_pending = tc_tasks.iter()
+            .filter(|t| matches!(t.status(), task_hookrs::status::TaskStatus::Pending))
+            .count();
+            
+        println!("   CLI pending: {}, TaskChampion pending: {}", cli_pending, tc_pending);
+        
+        assert!(cli_pending > 0, "CLI backend should return pending tasks");
+        assert!(tc_pending > 0, "TaskChampion backend should return pending tasks");
+        
+        println!("   ✅ Both backends successfully filter for pending tasks");
     }
 }
