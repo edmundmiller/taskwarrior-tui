@@ -1,7 +1,40 @@
-//! UI Testing Utilities for Taskwarrior TUI
+//! # UI Testing Utilities for Taskwarrior TUI
 //! 
-//! This module provides comprehensive testing utilities for TUI components,
-//! including snapshot testing, mock data generation, and UI state verification.
+//! This module provides comprehensive testing utilities for TUI components.
+//! 
+//! ## Purpose
+//! - Provide reusable testing utilities for TUI components
+//! - Generate consistent mock data for testing
+//! - Enable snapshot testing for visual regression detection
+//! - Offer property-based testing strategies
+//! 
+//! ## Main Components
+//! 
+//! ### `TuiTestHelper`
+//! The primary testing utility that wraps ratatui's TestBackend to provide:
+//! - Terminal rendering simulation
+//! - Snapshot testing capabilities
+//! - Buffer content extraction and analysis
+//! 
+//! ### `MockData`
+//! Generates consistent test data including:
+//! - Simple tasks with basic properties
+//! - Complex tasks with tags, projects, and status
+//! - Collections of tasks for list testing
+//! - Tasks organized by status for filter testing
+//! 
+//! ### `UiAssertions`
+//! Helper functions for common UI test assertions:
+//! - Text content verification
+//! - Border and structural element detection
+//! - Line counting and layout validation
+//! 
+//! ### Property-Based Testing (`strategies` module)
+//! Provides proptest strategies for generating:
+//! - Random but valid task descriptions
+//! - Task status combinations
+//! - Project and tag collections
+//! - Complete task objects for robust testing
 
 use insta::{assert_snapshot, Settings};
 use proptest::prelude::*;
@@ -16,18 +49,44 @@ use task_hookrs::{
 };
 use uuid::Uuid;
 
-/// Standard terminal size for consistent testing
+// =============================================================================
+// CONSTANTS AND CONFIGURATION
+// =============================================================================
+
+/// Standard terminal width for consistent testing
+/// This matches a typical terminal width and ensures consistent snapshots
 pub const TERMINAL_WIDTH: u16 = 80;
+
+/// Standard terminal height for consistent testing  
+/// This matches a typical terminal height and ensures consistent snapshots
 pub const TERMINAL_HEIGHT: u16 = 24;
 
-/// Testing utilities for TUI components
+// =============================================================================
+// MAIN TESTING UTILITIES
+// =============================================================================
+
+/// Primary testing utility for TUI components
+/// 
+/// This struct wraps ratatui's TestBackend to provide convenient methods for:
+/// - Rendering widgets in a simulated terminal
+/// - Capturing terminal output for analysis
+/// - Running snapshot tests for visual regression detection
+/// - Managing test-specific settings and configuration
 pub struct TuiTestHelper {
+    /// The simulated terminal for rendering widgets
     terminal: Terminal<TestBackend>,
+    /// Insta settings for snapshot testing configuration
     settings: Settings,
 }
 
 impl TuiTestHelper {
-    /// Create a new TUI test helper with standard terminal size
+    /// Create a new TUI test helper with standard terminal size (80x24)
+    /// 
+    /// This is the most common method for creating a test helper. It uses
+    /// standard terminal dimensions that work well for most UI components.
+    /// 
+    /// # Returns
+    /// A configured TuiTestHelper ready for widget testing and snapshot creation
     pub fn new() -> Self {
         let backend = TestBackend::new(TERMINAL_WIDTH, TERMINAL_HEIGHT);
         let terminal = Terminal::new(backend).unwrap();
@@ -115,7 +174,19 @@ impl Default for TuiTestHelper {
     }
 }
 
-/// Mock data generators for testing
+// =============================================================================
+// MOCK DATA GENERATION
+// =============================================================================
+
+/// Mock data generators for consistent testing
+/// 
+/// This struct provides static methods to generate various types of test data:
+/// - Simple tasks with minimal properties
+/// - Complex tasks with full property sets
+/// - Collections of tasks for list testing
+/// - Tasks organized by specific criteria (status, etc.)
+/// 
+/// All generated data is deterministic and suitable for snapshot testing.
 pub struct MockData;
 
 impl MockData {
@@ -242,7 +313,22 @@ impl MockData {
     }
 }
 
+// =============================================================================
+// PROPERTY-BASED TESTING STRATEGIES
+// =============================================================================
+
 /// Property-based testing strategies for generating test data
+/// 
+/// This module provides proptest strategies for generating random but valid
+/// test data. These strategies are used in property-based tests to verify
+/// that the system behaves correctly across a wide range of inputs.
+/// 
+/// Strategies include:
+/// - Task descriptions with realistic constraints
+/// - Valid task status values
+/// - Project name variations (including None)
+/// - Tag collections of varying sizes
+/// - Complete task objects with all properties
 pub mod strategies {
     use super::*;
     
@@ -298,7 +384,21 @@ pub mod strategies {
     }
 }
 
+// =============================================================================
+// UI ASSERTION HELPERS  
+// =============================================================================
+
 /// UI state verification helpers
+/// 
+/// This struct provides static methods for common UI testing assertions.
+/// These helpers make it easier to verify UI state and provide clear
+/// error messages when assertions fail.
+/// 
+/// Available assertions:
+/// - Text content verification (contains/not contains)
+/// - Line counting for layout validation
+/// - Border and structural element detection
+/// - Table structure verification
 pub struct UiAssertions;
 
 impl UiAssertions {
@@ -355,6 +455,17 @@ impl UiAssertions {
     }
 }
 
+// =============================================================================
+// UNIT TESTS FOR TESTING UTILITIES
+// =============================================================================
+
+/// Unit tests for the testing utilities themselves
+/// 
+/// These tests verify that our testing infrastructure works correctly:
+/// - TuiTestHelper creates proper terminal instances
+/// - MockData generates valid test data
+/// - UiAssertions work correctly
+/// - Property-based strategies generate valid data
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,7 +1,60 @@
-//! Comprehensive Snapshot Testing for Visual Regression Protection
+//! # Comprehensive Snapshot Testing for Visual Regression Protection
 //! 
 //! This module provides extensive snapshot testing to catch visual regressions
 //! in the TUI interface and ensure consistent rendering across different scenarios.
+//! 
+//! ## Purpose
+//! Snapshot testing captures the exact terminal output for UI components and stores
+//! it as a baseline. Future test runs compare against these baselines to detect
+//! any unintended visual changes.
+//! 
+//! ## Test Organization
+//! 
+//! ### Basic Widgets (`basic_widgets` module)
+//! Tests for fundamental UI components:
+//! - Title widget with borders and styling
+//! - Help text with key bindings
+//! - Status bar with task counts
+//! - Progress indicators and gauges
+//! 
+//! ### Task List Scenarios (`task_list_snapshots` module)
+//! Tests for task display in various states:
+//! - Empty task list with helpful message
+//! - Single task display
+//! - Multiple tasks with different statuses
+//! - Task selection and marking indicators
+//! 
+//! ### Responsive Design (`responsive_snapshots` module)
+//! Tests for different terminal sizes:
+//! - Narrow terminals (40x15)
+//! - Wide terminals (120x30)
+//! - Square terminals (60x60)
+//! - Content adaptation and wrapping
+//! 
+//! ### Theme Testing (`theme_snapshots` module)
+//! Tests for different color schemes:
+//! - Dark theme with standard colors
+//! - Light theme with inverted colors
+//! - High contrast theme for accessibility
+//! 
+//! ### Layout Testing (`layout_snapshots` module)
+//! Tests for complex UI layouts:
+//! - Split pane layouts (60/40)
+//! - Tabbed interfaces
+//! - Three-pane layouts (context/tasks/details)
+//! 
+//! ### Edge Cases (`edge_case_snapshots` module)
+//! Tests for error conditions and edge cases:
+//! - Error message display
+//! - Loading states
+//! - Confirmation dialogs
+//! - Very long text content
+//! 
+//! ### Regression Tests (`regression_snapshots` module)
+//! Tests for specific issues and regressions:
+//! - Unicode character rendering
+//! - Special character handling
+//! - Minimal terminal size support
 
 #[path = "ui_testing.rs"]
 mod ui_testing;
@@ -13,12 +66,29 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Gauge, LineGauge, List, ListItem, Paragraph, Tabs},
 };
 
+// =============================================================================
+// SNAPSHOT TEST SUITE
+// =============================================================================
+
 /// Comprehensive snapshot tests for different UI components and scenarios
+/// 
+/// These tests capture the exact terminal output for various UI states and
+/// compare them against stored baselines to detect visual regressions.
 #[cfg(test)]
 mod snapshot_tests {
     use super::*;
 
+    // =========================================================================
+    // BASIC WIDGET SNAPSHOTS
+    // =========================================================================
+
     /// Test basic widget rendering snapshots
+    /// 
+    /// These tests verify that fundamental UI widgets render correctly:
+    /// - Title widget with proper borders and text alignment
+    /// - Help text with organized key binding information
+    /// - Status bar with task count information
+    /// - Progress indicators showing completion percentages
     mod basic_widgets {
         use super::*;
 
@@ -126,7 +196,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // TASK LIST SNAPSHOT TESTS
+    // =========================================================================
+
     /// Test task list rendering in different states
+    /// 
+    /// These tests verify task list display across various scenarios:
+    /// - Empty state with helpful messaging
+    /// - Single task with proper formatting
+    /// - Multiple tasks with status indicators
+    /// - Selection and marking visual feedback
     mod task_list_snapshots {
         use super::*;
 
@@ -216,7 +296,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // RESPONSIVE DESIGN SNAPSHOT TESTS
+    // =========================================================================
+
     /// Test different terminal sizes for responsive design
+    /// 
+    /// These tests verify that the UI adapts properly to different terminal sizes:
+    /// - Narrow terminals with limited horizontal space
+    /// - Wide terminals with extra horizontal space
+    /// - Square terminals with balanced dimensions
+    /// - Content wrapping and truncation behavior
     mod responsive_snapshots {
         use super::*;
 
@@ -275,7 +365,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // THEME AND COLOR SCHEME SNAPSHOT TESTS
+    // =========================================================================
+
     /// Test different themes and color schemes
+    /// 
+    /// These tests verify visual consistency across different color themes:
+    /// - Dark theme for low-light environments
+    /// - Light theme for bright environments
+    /// - High contrast theme for accessibility
+    /// - Color application and text readability
     mod theme_snapshots {
         use super::*;
 
@@ -325,7 +425,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // COMPLEX LAYOUT SNAPSHOT TESTS
+    // =========================================================================
+
     /// Test complex layouts and multi-pane interfaces
+    /// 
+    /// These tests verify complex UI layouts and multi-pane arrangements:
+    /// - Split pane layouts with proper proportions
+    /// - Tabbed interfaces with navigation indicators
+    /// - Three-pane layouts for context/tasks/details
+    /// - Layout consistency and alignment
     mod layout_snapshots {
         use super::*;
 
@@ -399,7 +509,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // ERROR STATES AND EDGE CASE SNAPSHOT TESTS
+    // =========================================================================
+
     /// Test error states and edge cases
+    /// 
+    /// These tests verify proper handling of error conditions and edge cases:
+    /// - Error message display with clear formatting
+    /// - Loading states with progress indicators
+    /// - Confirmation dialogs with user prompts
+    /// - Very long content with wrapping behavior
     mod edge_case_snapshots {
         use super::*;
 
@@ -473,7 +593,17 @@ mod snapshot_tests {
         }
     }
 
+    // =========================================================================
+    // REGRESSION SNAPSHOT TESTS
+    // =========================================================================
+
     /// Regression tests for specific issues
+    /// 
+    /// These tests verify fixes for specific bugs and prevent regressions:
+    /// - Unicode character rendering correctness
+    /// - Special character escape handling
+    /// - Minimal terminal size support
+    /// - Character encoding edge cases
     mod regression_snapshots {
         use super::*;
 
@@ -524,7 +654,16 @@ mod snapshot_tests {
     }
 }
 
+// =============================================================================
+// SNAPSHOT TESTING CONFIGURATION
+// =============================================================================
+
 /// Snapshot test configuration and utilities
+/// 
+/// This function configures insta settings for better snapshot management:
+/// - Prepends module names to snapshot files for organization
+/// - Omits expressions to reduce noise in snapshots
+/// - Sets up consistent snapshot naming and storage
 pub fn configure_snapshot_testing() {
     // Configure insta for better snapshot management
     let mut settings = insta::Settings::clone_current();

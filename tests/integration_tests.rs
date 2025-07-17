@@ -1,7 +1,36 @@
-//! Integration Tests for Taskwarrior TUI
+//! # Integration Tests for Taskwarrior TUI
 //! 
-//! This module contains comprehensive integration tests that verify
-//! complete user workflows, state transitions, and UI behavior.
+//! This module contains comprehensive integration tests that verify complete
+//! user workflows, state transitions, and UI behavior.
+//! 
+//! ## Test Categories
+//! 
+//! ### Basic UI Functionality
+//! - Empty task list handling
+//! - Single task display
+//! - Multiple task display
+//! - Error state handling
+//! - Help screen rendering
+//! 
+//! ### State Management
+//! - Table state transitions (selection, marking, mode switching)
+//! - Task filtering by status
+//! - Task detail view rendering
+//! 
+//! ### Responsive Design
+//! - Different terminal sizes
+//! - Layout adaptation
+//! - Content wrapping and truncation
+//! 
+//! ### Performance Testing
+//! - Large task list handling
+//! - Unicode character support
+//! - Rendering performance benchmarks
+//! 
+//! ### Property-Based Testing
+//! - Random task list rendering
+//! - Table state invariants
+//! - UI dimension validation
 
 #[path = "ui_testing.rs"]
 mod ui_testing;
@@ -11,10 +40,21 @@ use assert_matches::assert_matches;
 use proptest::prelude::*;
 use task_hookrs::{status::TaskStatus, task::Task, task::TW26};
 
+// =============================================================================
+// INTEGRATION TEST SUITE
+// =============================================================================
+
 /// Integration test suite for complete user workflows
+/// 
+/// These tests verify end-to-end functionality by testing complete user
+/// interactions and workflows rather than individual components.
 #[cfg(test)]
 mod integration_tests {
     use super::*;
+    
+    // =========================================================================
+    // BASIC UI FUNCTIONALITY TESTS
+    // =========================================================================
 
     #[test]
     fn test_empty_task_list_ui() {
@@ -90,6 +130,10 @@ mod integration_tests {
         tui_helper.assert_snapshot("multiple_task_display");
     }
 
+    // =========================================================================
+    // STATE MANAGEMENT TESTS
+    // =========================================================================
+
     #[test]
     fn test_table_state_transitions() {
         use taskwarrior_tui::table::{TableMode, TaskwarriorTuiTableState};
@@ -156,6 +200,10 @@ mod integration_tests {
             assert_eq!(task.status(), &TaskStatus::Deleted);
         }
     }
+
+    // =========================================================================
+    // RESPONSIVE DESIGN TESTS
+    // =========================================================================
 
     #[test]
     fn test_responsive_layout_different_sizes() {
@@ -269,7 +317,14 @@ mod integration_tests {
         tui_helper.assert_snapshot("task_details_view");
     }
 
+    // =========================================================================
+    // PROPERTY-BASED INTEGRATION TESTS
+    // =========================================================================
+
     /// Property-based integration tests
+    /// 
+    /// These tests use randomly generated data to verify system behavior
+    /// across a wide range of inputs and edge cases.
     mod property_tests {
         use super::*;
         use crate::ui_testing::strategies;
@@ -355,7 +410,15 @@ mod integration_tests {
         }
     }
 
+    // =========================================================================
+    // PERFORMANCE AND STRESS TESTS
+    // =========================================================================
+
     /// Performance and stress tests
+    /// 
+    /// These tests verify that the system performs well under load and
+    /// handles edge cases like very large datasets or unusual content.
+    
     #[test]
     fn test_large_task_list_performance() {
         let mut tui_helper = TuiTestHelper::new();
