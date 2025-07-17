@@ -96,6 +96,123 @@ impl TaskwarriorTuiTableState {
   }
 }
 
+#[cfg(test)]
+mod table_state_tests {
+  use super::*;
+
+  #[test]
+  fn test_default_table_state() {
+    let state = TaskwarriorTuiTableState::default();
+    
+    assert_eq!(state.offset, 0);
+    assert_eq!(state.current_selection, Some(0));
+    assert!(state.marked.is_empty());
+    assert!(matches!(state.mode, TableMode::SingleSelection));
+  }
+
+  #[test]
+  fn test_selection_operations() {
+    let mut state = TaskwarriorTuiTableState::default();
+    
+    // Test initial selection
+    assert_eq!(state.current_selection(), Some(0));
+    
+    // Test changing selection
+    state.select(Some(5));
+    assert_eq!(state.current_selection(), Some(5));
+    
+    // Test clearing selection
+    state.select(None);
+    assert_eq!(state.current_selection(), None);
+    assert_eq!(state.offset, 0);
+  }
+
+  #[test]
+  fn test_marking_operations() {
+    let mut state = TaskwarriorTuiTableState::default();
+    
+    // Test marking items
+    state.mark(Some(0));
+    state.mark(Some(2));
+    state.mark(Some(5));
+    
+    let marked: Vec<usize> = state.marked().copied().collect();
+    assert_eq!(marked.len(), 3);
+    assert!(marked.contains(&0));
+    assert!(marked.contains(&2));
+    assert!(marked.contains(&5));
+    
+    // Test unmarking
+    state.unmark(Some(2));
+    let marked: Vec<usize> = state.marked().copied().collect();
+    assert_eq!(marked.len(), 2);
+    assert!(!marked.contains(&2));
+    
+    // Test toggle marking
+    state.toggle_mark(Some(3)); // Should mark
+    state.toggle_mark(Some(0)); // Should unmark
+    
+    let marked: Vec<usize> = state.marked().copied().collect();
+    assert!(marked.contains(&3));
+    assert!(!marked.contains(&0));
+  }
+
+  #[test]
+  fn test_mode_switching() {
+    let mut state = TaskwarriorTuiTableState::default();
+    
+    // Test default mode
+    assert!(matches!(state.mode(), TableMode::SingleSelection));
+    
+    // Test switching to multiple selection
+    state.multiple_selection();
+    assert!(matches!(state.mode(), TableMode::MultipleSelection));
+    
+    // Test switching back to single selection
+    state.single_selection();
+    assert!(matches!(state.mode(), TableMode::SingleSelection));
+  }
+
+  #[test]
+  fn test_clear_marks() {
+    let mut state = TaskwarriorTuiTableState::default();
+    
+    // Mark several items
+    state.mark(Some(1));
+    state.mark(Some(3));
+    state.mark(Some(7));
+    
+    assert_eq!(state.marked().count(), 3);
+    
+    // Clear all marks
+    state.clear();
+    
+    assert_eq!(state.marked().count(), 0);
+  }
+
+  #[test]
+  fn test_edge_cases() {
+    let mut state = TaskwarriorTuiTableState::default();
+    
+    // Test marking None
+    state.mark(None);
+    assert_eq!(state.marked().count(), 0);
+    
+    // Test unmarking None
+    state.unmark(None);
+    assert_eq!(state.marked().count(), 0);
+    
+    // Test toggle marking None
+    state.toggle_mark(None);
+    assert_eq!(state.marked().count(), 0);
+    
+    // Test unmarking non-existent item
+    state.mark(Some(5));
+    state.unmark(Some(10));
+    assert_eq!(state.marked().count(), 1);
+  }
+}
+
 /// Holds data to be displayed in a Table widget
 #[derive(Debug, Clone)]
 pub enum Row<D>

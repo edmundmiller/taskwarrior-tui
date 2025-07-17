@@ -1,0 +1,5 @@
+---
+source: tests/ui_testing.rs
+expression: self.buffer()
+---
+┌40x15─────────────────────────────────┐│Narrow terminal                       ││view test                             ││                                      ││Some tasks:                           ││• Task 1                              ││• Task 2                              ││                                      ││                                      ││                                      ││                                      ││                                      ││                                      ││                                      │└──────────────────────────────────────┘

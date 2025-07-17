@@ -16,6 +16,33 @@ This is `taskwarrior-tui`, a Terminal User Interface (TUI) for Taskwarrior writt
 ### Testing
 - `cargo test` - Run all tests
 - `cargo test --workspace -- --nocapture` - Run tests with output
+- `cargo test ui_` - Run UI/TUI component tests specifically
+- `cargo test integration_` - Run integration tests
+- `cargo test snapshot_` - Run snapshot tests for visual regression
+- `cargo insta review` - Review and approve/reject snapshot changes
+- `cargo insta test` - Run snapshot tests with insta
+
+### Testing Architecture
+
+**Unit Tests:**
+- Backend tests (`src/backend/tests.rs`) - Test task data operations
+- Table state tests (`src/table.rs`) - Test table widget state management
+- UI component tests (`src/ui.rs`) - Test individual UI widget rendering
+- Configuration tests (`src/config.rs`) - Test configuration parsing
+
+**Integration Tests:**
+- `tests/ui_testing.rs` - TUI testing utilities and mock data generators
+- `tests/integration_tests.rs` - End-to-end workflow testing
+- `tests/snapshot_tests.rs` - Visual regression testing with snapshots
+
+**Testing Dependencies:**
+- `insta` - Snapshot testing for UI regression detection
+- `proptest` - Property-based testing for robust edge case coverage
+- `assert_matches` - Pattern matching assertions
+- `similar` - Better diff output for test failures
+
+**Snapshot Testing:**
+Snapshots are stored in `snapshots/` directory and capture the exact terminal output for UI components. This helps detect visual regressions when making changes to the UI. Use `cargo insta review` to approve changes to the UI after intentional modifications.
 
 ### Code Quality
 - `cargo check` - Check code for compilation errors

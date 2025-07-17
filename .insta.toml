@@ -1,0 +1,26 @@
+# Configuration for Insta snapshot testing
+
+[settings]
+# Review behavior
+review = true
+auto_review = false
+
+# Snapshot naming
+prepend_module_to_snapshot = true
+omit_expression = true
+
+# Snapshot output settings
+sort_maps = true
+snapshot_path = "snapshots"
+
+# UI testing specific settings
+[settings.filters]
+# Filter out terminal size specifics that might vary
+"[0-9]+x[0-9]+" = "[SIZE]"
+
+# Filter out timestamps if any appear in UI
+"\d{4}-\d{2}-\d{2}" = "[DATE]"
+"\d{2}:\d{2}:\d{2}" = "[TIME]"
+
+# Filter UUIDs that might appear in task data
+"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}" = "[UUID]"
