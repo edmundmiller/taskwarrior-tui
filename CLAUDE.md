@@ -54,6 +54,10 @@ Snapshots are stored in `snapshots/` directory and capture the exact terminal ou
 
 ## Code Architecture
 
+### Internals Overview
+
+`taskwarrior-tui` is a state-driven terminal user interface. Keyboard events are read asynchronously and communicated using channels. Most of the logic is implemented in `src/app.rs`. The difference between the previous state and the current state of the TUI is rendered every `Tick` by `ratatui`. The `app.draw_...` functions are responsible for rendering the UI. Actions for key presses are taken in `app.handle_input(&mut self, input: Key)`.
+
 ### Core Components
 
 **Main Application (`src/app.rs`)**
@@ -98,6 +102,12 @@ Snapshots are stored in `snapshots/` directory and capture the exact terminal ou
 
 The application reads configuration from taskwarrior's `.taskrc` file and supports custom key bindings and colors through taskwarrior's UDA (User Defined Attributes) system.
 
+## Contributing to Documentation
+
+See `docs/` folder in the repository: <https://github.com/kdheepak/taskwarrior-tui>
+
+When you make a PR to the repository, a preview of the documentation is rendered and a link is posted to the PR.
+
 ## Development Notes
 
 - Uses stable Rust toolchain
@@ -109,6 +119,33 @@ The application reads configuration from taskwarrior's `.taskrc` file and suppor
   - `TASKRC` - Custom taskrc file location
   - `TASKDATA` - Custom taskdata directory
 
-## Testing Requirements
+## Testing Requirements & Setup
 
-Tests require taskwarrior to be installed and use test data from the `taskwarrior-testdata` repository. The CI setup shows the testing environment configuration.
+Tests require taskwarrior to be installed and use test data from the `taskwarrior-testdata` repository. 
+
+**Initial Setup:**
+```bash
+git clone https://github.com/kdheepak/taskwarrior-tui
+cd taskwarrior-tui
+
+git clone https://github.com/kdheepak/taskwarrior-testdata tests/data
+source .envrc
+
+cargo test
+```
+
+**Testing Individual Functions:**
+To test a specific function, for example `test_taskwarrior_timing` in `src/app.rs`:
+```bash
+cargo test -- app::tests::test_taskwarrior_timing --nocapture
+```
+
+**Getting Debug Logs:**
+```bash
+export TASKWARRIOR_TUI_LOG_LEVEL=debug
+taskwarrior-tui
+
+# OR for trace level
+export TASKWARRIOR_TUI_LOG_LEVEL=trace
+cargo run
+```
