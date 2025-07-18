@@ -1,7 +1,7 @@
 use std::{
   collections::{HashMap, HashSet},
   fmt::Display,
-  iter::{self, Iterator},
+  iter::Iterator,
 };
 
 use cassowary::{
@@ -15,7 +15,6 @@ use ratatui::{
   style::Style,
   widgets::{Block, StatefulWidget, Widget},
 };
-use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone)]

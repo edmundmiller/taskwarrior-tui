@@ -1,16 +1,13 @@
 use ratatui::{
-  backend::Backend,
-  layout::{Alignment, Constraint, Direction, Layout, Rect},
-  style::{Color, Modifier, Style},
-  symbols,
-  text::{Line, Span},
-  widgets::{Block, BorderType, Borders, Cell, LineGauge, Paragraph, Row, Table},
+  layout::{Alignment, Constraint, Direction, Layout},
+  style::{Color, Style},
+  widgets::{Block, BorderType, Borders, Paragraph},
   Frame,
 };
 
 use crate::app::TaskwarriorTui;
 
-pub fn draw(rect: &mut Frame, app: &TaskwarriorTui) {
+pub fn draw(rect: &mut Frame, _app: &TaskwarriorTui) {
   let size = rect.size();
   let chunks = Layout::default()
     .direction(Direction::Vertical)

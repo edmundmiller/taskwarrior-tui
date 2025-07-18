@@ -1,11 +1,9 @@
 use std::{
-  fs::File,
-  path::{Path, PathBuf},
+  path::PathBuf,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rustyline::{
-  error::ReadlineError,
   history::{DefaultHistory, History, SearchDirection},
 };
 

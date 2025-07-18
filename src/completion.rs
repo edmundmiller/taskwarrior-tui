@@ -1,22 +1,10 @@
-use std::{error::Error, io};
-
-use log::{debug, error, info, log_enabled, trace, warn, Level, LevelFilter};
 use ratatui::{
-  layout::{Constraint, Corner, Direction, Layout},
-  style::{Color, Modifier, Style},
-  text::{Line, Span},
-  widgets::{Block, Borders, List, ListItem, ListState},
-  Terminal,
+  widgets::{ListState},
 };
 use rustyline::{
-  error::ReadlineError,
-  highlight::{Highlighter, MatchingBracketHighlighter},
-  hint::Hinter,
   history::FileHistory,
-  line_buffer::LineBuffer,
   Context,
 };
-use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
 pub fn get_start_word_under_cursor(line: &str, cursor_pos: usize) -> usize {
@@ -175,7 +163,7 @@ impl CompletionList {
   pub fn candidates(&self) -> Vec<Completion> {
     let hist = FileHistory::new();
     let ctx = rustyline::Context::new(&hist);
-    let (pos, candidates) = self.helper.complete(&self.current, self.pos, &ctx).unwrap();
+    let (_pos, candidates) = self.helper.complete(&self.current, self.pos, &ctx).unwrap();
     candidates
   }
 

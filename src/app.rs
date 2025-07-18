@@ -1,40 +1,33 @@
 use std::{
-  borrow::Borrow,
-  cmp::Ordering,
   collections::{HashMap, HashSet},
   convert::TryInto,
   fs, io,
-  io::{Read, Write},
   path::Path,
-  sync::{mpsc, Arc, Mutex},
   time::{Duration, Instant, SystemTime},
 };
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
-use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
+use chrono::{Datelike, Local, NaiveDateTime, TimeZone, Timelike};
 use crossterm::{
   event::{DisableMouseCapture, EnableMouseCapture},
   execute,
-  style::style,
   terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use futures::SinkExt;
 use lazy_static::lazy_static;
-use log::{debug, error, info, log_enabled, trace, warn, Level, LevelFilter};
+use log::{debug, error, info, trace, warn};
 use ratatui::{
   backend::{Backend, CrosstermBackend},
-  layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
+  layout::{Constraint, Direction, Layout, Margin, Rect},
   style::{Color, Modifier, Style},
-  symbols::bar::FULL,
   terminal::Frame,
   text::{Line, Span, Text},
-  widgets::{Block, BorderType, Borders, Clear, Gauge, LineGauge, List, ListItem, Paragraph, Tabs, Wrap},
+  widgets::{Block, BorderType, Borders, Clear, LineGauge, List, ListItem, Paragraph, Tabs, Wrap},
   Terminal,
 };
 use regex::Regex;
-use rustyline::{history::SearchDirection as HistoryDirection, line_buffer::LineBuffer, At, Editor, Word};
-use task_hookrs::{date::Date, import::import, project::Project, status::TaskStatus, task::Task};
-use unicode_segmentation::{Graphemes, UnicodeSegmentation};
+use rustyline::{history::SearchDirection as HistoryDirection, line_buffer::LineBuffer, At, Word};
+use task_hookrs::{date::Date, import::import, status::TaskStatus, task::Task};
+use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 use uuid::Uuid;
 use versions::Versioning;
@@ -44,21 +37,20 @@ use crate::{
   backend::{self, BackendConfig},
   calendar::Calendar,
   completion::{get_start_word_under_cursor, CompletionList},
-  config,
   config::Config,
   event::{Event, KeyCode},
   help::Help,
   history::HistoryContext,
   keyconfig::KeyConfig,
   pane::{
-    context::{ContextDetails, ContextsState},
+    context::ContextsState,
     project::ProjectsState,
     Pane,
   },
   scrollbar::Scrollbar,
   table::{Row, Table, TableMode, TaskwarriorTuiTableState},
   task_report::TaskReportTable,
-  ui, utils,
+  utils,
 };
 
 const MAX_LINE: usize = 4096;
@@ -77,7 +69,7 @@ pub enum DateState {
   NotDue,
 }
 
-pub fn get_date_state(reference: &Date, due: usize) -> DateState {
+pub fn get_date_state(reference: &Date, _due: usize) -> DateState {
   let now = Local::now();
   let reference = TimeZone::from_utc_datetime(now.offset(), reference);
   let now = TimeZone::from_utc_datetime(now.offset(), &now.naive_utc());
@@ -533,6 +525,7 @@ impl TaskwarriorTui {
     f.render_widget(p, rect);
   }
 
+  #[allow(dead_code)]
   fn style_for_project(&self, project: &[String]) -> Style {
     let virtual_tag_names_in_precedence = &self.config.rule_precedence_color;
     let mut style = Style::default();
@@ -626,7 +619,7 @@ impl TaskwarriorTui {
           .wrap(Wrap { trim: true });
         f.render_widget(p, rect);
         // draw error pop up
-        let rects = Layout::default()
+        let _rects = Layout::default()
           .direction(Direction::Vertical)
           .constraints([Constraint::Min(0)].as_ref())
           .split(f.size());
@@ -635,7 +628,7 @@ impl TaskwarriorTui {
         // reset error when entering Action::Report
         self.previous_mode = None;
         self.error = None;
-        let position = Self::get_position(&self.command);
+        let _position = Self::get_position(&self.command);
         self.draw_command(
           f,
           rects[1],
@@ -944,7 +937,7 @@ impl TaskwarriorTui {
 
   pub fn get_position(lb: &LineBuffer) -> usize {
     let mut position = 0;
-    for (i, (j, g)) in lb.as_str().grapheme_indices(true).enumerate() {
+    for (_i, (j, g)) in lb.as_str().grapheme_indices(true).enumerate() {
       if j == lb.pos() {
         break;
       }
@@ -979,7 +972,7 @@ impl TaskwarriorTui {
   }
 
   fn draw_context_menu(&mut self, f: &mut Frame, percent_x: u16, percent_y: u16) {
-    let rects = Layout::default()
+    let _rects = Layout::default()
       .direction(Direction::Vertical)
       .constraints([Constraint::Min(0)].as_ref())
       .split(f.size());
@@ -993,7 +986,7 @@ impl TaskwarriorTui {
     let maximum_column_width = area.width;
     let widths = self.calculate_widths(&contexts, &headers, maximum_column_width);
 
-    let selected = self.contexts.table_state.current_selection().unwrap_or_default();
+    let _selected = self.contexts.table_state.current_selection().unwrap_or_default();
     let header = headers.iter();
     let mut rows = vec![];
     let mut highlight_style = Style::default();
@@ -1118,7 +1111,7 @@ impl TaskwarriorTui {
       return;
     }
     let selected = self.current_selection;
-    let task_id = self.tasks[selected].id().unwrap_or_default();
+    let _task_id = self.tasks[selected].id().unwrap_or_default();
     let task_uuid = *self.tasks[selected].uuid();
 
     let data = match self.task_details.get(&task_uuid) {
@@ -1143,6 +1136,7 @@ impl TaskwarriorTui {
     self.task_details_scroll = self.task_details_scroll.saturating_add(1);
   }
 
+  #[allow(dead_code)]
   fn task_by_index(&self, i: usize) -> Option<Task> {
     let tasks = &self.tasks;
     if i >= tasks.len() {
@@ -1231,7 +1225,7 @@ impl TaskwarriorTui {
         break;
       }
     }
-    for (i, header) in headers.iter().enumerate() {
+    for (i, _header) in headers.iter().enumerate() {
       if i == 0 {
         // always give ID a couple of extra for indicator
         widths[i] += self.config.uda_selection_indicator.as_str().width();
@@ -1790,7 +1784,7 @@ impl TaskwarriorTui {
       if self.tasks.is_empty() {
         break;
       }
-      let task_id = self.tasks[s].id().unwrap_or_default();
+      let _task_id = self.tasks[s].id().unwrap_or_default();
       let task_uuid = *self.tasks[s].uuid();
       task_uuids.push(task_uuid);
     }
@@ -2281,7 +2275,7 @@ impl TaskwarriorTui {
     self.pause_tui().await.unwrap();
 
     let selected = self.current_selection;
-    let task_id = self.tasks[selected].id().unwrap_or_default();
+    let _task_id = self.tasks[selected].id().unwrap_or_default();
     let task_uuid = *self.tasks[selected].uuid();
 
     let r = std::process::Command::new("task").arg(format!("{}", task_uuid)).arg("edit").spawn();
@@ -2397,7 +2391,7 @@ impl TaskwarriorTui {
       }
       if task.recur().is_some() {
         add_tag(task, "RECURRING".to_string());
-        let r = task.recur().unwrap();
+        let _r = task.recur().unwrap();
       }
       if let Some(d) = task.due() {
         let status = task.status();
@@ -2449,7 +2443,7 @@ impl TaskwarriorTui {
   pub fn toggle_mark(&mut self) {
     if !self.tasks.is_empty() {
       let selected = self.current_selection;
-      let task_id = self.tasks[selected].id().unwrap_or_default();
+      let _task_id = self.tasks[selected].id().unwrap_or_default();
       let task_uuid = *self.tasks[selected].uuid();
 
       if !self.marked.insert(task_uuid) {
@@ -2950,7 +2944,7 @@ impl TaskwarriorTui {
           KeyCode::Char('\n') => {
             if self.show_completion_pane {
               self.show_completion_pane = false;
-              if let Some((i, (r, m, o, _, _))) = self.completion_list.selected() {
+              if let Some((_i, (r, _m, o, _, _))) = self.completion_list.selected() {
                 let (before, after) = self.modify.as_str().split_at(self.modify.pos());
                 let fs = format!("{}{}{}", before.trim_end_matches(&o), r, after);
                 self.modify.update(&fs, self.modify.pos() + r.len() - o.len(), &mut self.changes);
@@ -3076,7 +3070,7 @@ impl TaskwarriorTui {
           KeyCode::Char('\n') => {
             if self.show_completion_pane {
               self.show_completion_pane = false;
-              if let Some((i, (r, m, o, _, _))) = self.completion_list.selected() {
+              if let Some((_i, (r, _m, o, _, _))) = self.completion_list.selected() {
                 let (before, after) = self.command.as_str().split_at(self.command.pos());
                 let fs = format!("{}{}{}", before.trim_end_matches(&o), r, after);
                 self.command.update(&fs, self.command.pos() + r.len() - o.len(), &mut self.changes);
@@ -3178,7 +3172,7 @@ impl TaskwarriorTui {
           KeyCode::Char('\n') => {
             if self.show_completion_pane {
               self.show_completion_pane = false;
-              if let Some((i, (r, m, o, _, _))) = self.completion_list.selected() {
+              if let Some((_i, (r, _m, o, _, _))) = self.completion_list.selected() {
                 let (before, after) = self.command.as_str().split_at(self.command.pos());
                 let fs = format!("{}{}{}", before.trim_end_matches(&o), r, after);
                 self.command.update(&fs, self.command.pos() + r.len() - o.len(), &mut self.changes);
@@ -3306,7 +3300,7 @@ impl TaskwarriorTui {
           KeyCode::Char('\n') => {
             if self.show_completion_pane {
               self.show_completion_pane = false;
-              if let Some((i, (r, m, o, _, _))) = self.completion_list.selected() {
+              if let Some((_i, (r, _m, o, _, _))) = self.completion_list.selected() {
                 let (before, after) = self.command.as_str().split_at(self.command.pos());
                 let fs = format!("{}{}{}", before.trim_end_matches(&o), r, after);
                 self.command.update(&fs, self.command.pos() + r.len() - o.len(), &mut self.changes);
@@ -3417,7 +3411,7 @@ impl TaskwarriorTui {
           KeyCode::Char('\n') => {
             if self.show_completion_pane {
               self.show_completion_pane = false;
-              if let Some((i, (r, m, o, _, _))) = self.completion_list.selected() {
+              if let Some((_i, (r, _m, o, _, _))) = self.completion_list.selected() {
                 let (before, after) = self.filter.as_str().split_at(self.filter.pos());
                 let fs = format!("{}{}{}", before.trim_end_matches(&o), r, after);
                 self.filter.update(&fs, self.filter.pos() + r.len() - o.len(), &mut self.changes);

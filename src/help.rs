@@ -1,11 +1,9 @@
-use std::cmp;
-
 use ratatui::{
   buffer::Buffer,
   layout::{Alignment, Rect},
   style::{Modifier, Style},
-  text::{Line, Span, Text},
-  widgets::{Block, BorderType, Borders, Clear, Paragraph, Widget},
+  text::{Line, Span},
+  widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 
 const TEXT: &str = include_str!("../docs/keybindings.md");

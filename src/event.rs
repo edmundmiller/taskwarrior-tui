@@ -1,13 +1,12 @@
 use crossterm::event::{
   KeyCode::{BackTab, Backspace, Char, Delete, Down, End, Enter, Esc, Home, Insert, Left, Null, PageDown, PageUp, Right, Tab, Up, F},
-  KeyEvent, KeyModifiers,
+  KeyModifiers,
 };
 use futures::StreamExt;
-use log::{debug, error, info, log_enabled, trace, warn, Level, LevelFilter};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use tokio::{
-  sync::{mpsc, oneshot},
-  task::JoinHandle,
+  sync::mpsc,
 };
 
 #[derive(Debug, Clone, Copy)]

@@ -1,7 +1,5 @@
-use std::{collections::HashSet, error::Error, hash::Hash};
-
 use anyhow::{anyhow, Result};
-use log::{error, info, warn};
+use log::error;
 use serde::{Deserialize, Serialize};
 
 use crate::event::KeyCode;
@@ -125,7 +123,7 @@ impl KeyConfig {
     let select_all = Self::get_config("uda.taskwarrior-tui.keyconfig.select-all", data);
     let undo = Self::get_config("uda.taskwarrior-tui.keyconfig.undo", data);
     let edit = Self::get_config("uda.taskwarrior-tui.keyconfig.edit", data);
-    let duplicate = Self::get_config("uda.taskwarrior-tui.keyconfig.duplicate", data);
+    let _duplicate = Self::get_config("uda.taskwarrior-tui.keyconfig.duplicate", data);
     let modify = Self::get_config("uda.taskwarrior-tui.keyconfig.modify", data);
     let shell = Self::get_config("uda.taskwarrior-tui.keyconfig.shell", data);
     let log = Self::get_config("uda.taskwarrior-tui.keyconfig.log", data);

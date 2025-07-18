@@ -1,6 +1,4 @@
-use std::fmt;
-
-use anyhow::{anyhow, Context as AnyhowContext, Result};
+use anyhow::Result;
 
 const NAME: &str = "Name";
 const TYPE: &str = "Remaining";
@@ -8,32 +6,10 @@ const DEFINITION: &str = "Avg age";
 const ACTIVE: &str = "Complete";
 
 use std::{
-  cmp,
-  cmp::min,
-  collections::{HashMap, HashSet},
-  error::Error,
-  process::{Command, Output},
+  process::Command,
 };
 
-use chrono::{Datelike, Duration, Local, Month, NaiveDate, NaiveDateTime, TimeZone};
-use itertools::Itertools;
-use ratatui::{
-  buffer::Buffer,
-  layout::{Alignment, Rect},
-  style::{Color, Modifier, Style},
-  symbols,
-  text::{Line, Span, Text},
-  widgets::{Block, BorderType, Borders, Clear, Paragraph, StatefulWidget, Widget},
-};
-use uuid::Uuid;
-
-use crate::{
-  action::Action,
-  app::{Mode, TaskwarriorTui},
-  event::KeyCode,
-  pane::Pane,
-  table::TaskwarriorTuiTableState,
-};
+use crate::table::TaskwarriorTuiTableState;
 
 #[derive(Debug, Clone, Default)]
 pub struct ContextDetails {

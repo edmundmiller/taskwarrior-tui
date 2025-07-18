@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, str};
+use std::{collections::HashMap, str};
 
 use anyhow::{Context, Result};
 use ratatui::{
@@ -35,6 +35,7 @@ impl TaskWarriorBool for str {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Uda {
   label: String,
   kind: String,

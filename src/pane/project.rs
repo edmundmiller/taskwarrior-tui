@@ -1,35 +1,19 @@
-use std::fmt;
+use anyhow::{Context as AnyhowContext, Result};
 
-use anyhow::{anyhow, Context as AnyhowContext, Result};
-
-const COL_WIDTH: usize = 21;
 const PROJECT_HEADER: &str = "Name";
 const REMAINING_TASK_HEADER: &str = "Remaining";
 const AVG_AGE_HEADER: &str = "Avg age";
 const COMPLETE_HEADER: &str = "Complete";
 
 use std::{
-  cmp::min,
-  collections::{HashMap, HashSet},
-  error::Error,
-  process::{Command, Output},
+  collections::HashSet,
+  process::Command,
 };
 
-use chrono::{Datelike, Duration, Local, Month, NaiveDate, NaiveDateTime, TimeZone};
-use itertools::Itertools;
-use ratatui::{
-  buffer::Buffer,
-  layout::Rect,
-  style::{Color, Modifier, Style},
-  symbols,
-  widgets::{Block, Widget},
-};
 use task_hookrs::project::Project;
-use uuid::Uuid;
 
 use crate::{
-  action::Action,
-  app::{Mode, TaskwarriorTui},
+  app::TaskwarriorTui,
   event::KeyCode,
   pane::Pane,
   table::TaskwarriorTuiTableState,
@@ -121,7 +105,7 @@ impl ProjectsState {
     let output = Command::new("task")
       .arg("summary")
       .output()
-      .context("Unable to run `task summary`")
+      .with_context(|| "Unable to run `task summary`")
       .unwrap();
     let data = String::from_utf8_lossy(&output.stdout);
     self.data = data.into();

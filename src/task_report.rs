@@ -1,11 +1,10 @@
-use std::{error::Error, process::Command};
+use std::process::Command;
 
 use anyhow::Result;
-use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use itertools::join;
 use task_hookrs::{task::Task, uda::UDAValue};
 use unicode_truncate::UnicodeTruncateStr;
-use unicode_width::UnicodeWidthStr;
 
 pub fn format_date_time(dt: NaiveDateTime) -> String {
   let dt = Local.from_local_datetime(&dt).unwrap();

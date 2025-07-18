@@ -1,18 +1,11 @@
 // Based on https://gist.github.com/diwic/5c20a283ca3a03752e1a27b0f3ebfa30
 // See https://old.reddit.com/r/rust/comments/4xneq5/the_calendar_example_challenge_ii_why_eddyb_all/
 
-use std::fmt;
-
-const COL_WIDTH: usize = 21;
-
-use std::cmp::min;
-
-use chrono::{format::Fixed, DateTime, Datelike, Duration, FixedOffset, Local, Month, NaiveDate, NaiveDateTime, TimeZone};
+use chrono::{Datelike, Duration, Local, Month, NaiveDate};
 use ratatui::{
   buffer::Buffer,
   layout::Rect,
   style::{Color, Modifier, Style},
-  symbols,
   widgets::{Block, Widget},
 };
 
@@ -110,11 +103,11 @@ impl Widget for Calendar<'_> {
       return;
     }
 
-    let style = self.style;
+    let _style = self.style;
     let today = Local::now();
 
     let year = self.year;
-    let month = self.month;
+    let _month = self.month;
 
     let months: Vec<_> = (0..12).collect();
 
@@ -171,7 +164,7 @@ impl Widget for Calendar<'_> {
       y += 1;
       let mut x = area.x + start_x;
       for d in days.iter_mut().take(endm).skip(start_m) {
-        let m = d.0.month() as usize;
+        let _m = d.0.month() as usize;
         let style = Style::default().bg(self.title_background_color);
         let days_string = if self.start_on_monday {
           "Mo Tu We Th Fr Sa Su"
@@ -197,7 +190,7 @@ impl Widget for Calendar<'_> {
               "   ".to_string()
             };
             let mut style = Style::default();
-            let index = self.date_style.iter().position(|(date, style)| d.1 == *date);
+            let index = self.date_style.iter().position(|(date, _style)| d.1 == *date);
             if let Some(i) = index {
               style = self.date_style[i].1;
             }
