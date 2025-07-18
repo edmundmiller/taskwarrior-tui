@@ -2,6 +2,7 @@ use std::{
   collections::{HashMap, HashSet},
   convert::TryInto,
   fs, io,
+  io::Read,
   path::Path,
   time::{Duration, Instant, SystemTime},
 };

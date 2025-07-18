@@ -352,3 +352,102 @@ impl Default for TimewarriorIntegration {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_timewarrior_config_default_values() {
+        let config = TimewarriorConfig::default();
+        assert!(config.enabled);
+        assert_eq!(config.tag_prefix, "");
+        assert!(config.include_project);
+        assert!(!config.include_description);
+        assert_eq!(config.log_level, "info");
+        assert!(!config.hook_installed);
+    }
+
+    #[test]
+    fn test_get_setup_instructions_complete() {
+        let integration = TimewarriorIntegration::default();
+        let instructions = integration.get_setup_instructions();
+        
+        // Verify we get some instructions
+        assert!(!instructions.is_empty());
+        
+        // Verify instructions contain status indicators
+        let text = instructions.join("\n");
+        assert!(text.contains("✅") || text.contains("❌"));
+    }
+
+    #[test]
+    fn test_active_tracking_info() {
+        let info = ActiveTrackingInfo {
+            tags: "project:test uuid:123".to_string(),
+            duration: "1h30m".to_string(),
+        };
+        
+        assert_eq!(info.tags, "project:test uuid:123");
+        assert_eq!(info.duration, "1h30m");
+    }
+
+    #[test]
+    fn test_timewarrior_status_complete() {
+        let status = TimewarriorStatus {
+            timewarrior_available: true,
+            hook_installed: true,
+            integration_enabled: true,
+            active_tracking: Some(ActiveTrackingInfo {
+                tags: "work".to_string(),
+                duration: "45m".to_string(),
+            }),
+        };
+        
+        assert!(status.timewarrior_available);
+        assert!(status.hook_installed);
+        assert!(status.integration_enabled);
+        assert!(status.active_tracking.is_some());
+    }
+
+    #[test]
+    fn test_config_serialization_roundtrip() {
+        let original = TimewarriorConfig {
+            enabled: false,
+            tag_prefix: "tw_".to_string(),
+            include_project: false,
+            include_description: true,
+            log_level: "debug".to_string(),
+            hook_installed: true,
+        };
+        
+        // Serialize
+        let json = serde_json::to_string(&original).expect("Failed to serialize");
+        
+        // Deserialize
+        let deserialized: TimewarriorConfig = 
+            serde_json::from_str(&json).expect("Failed to deserialize");
+        
+        // Verify all fields match
+        assert_eq!(original.enabled, deserialized.enabled);
+        assert_eq!(original.tag_prefix, deserialized.tag_prefix);
+        assert_eq!(original.include_project, deserialized.include_project);
+        assert_eq!(original.include_description, deserialized.include_description);
+        assert_eq!(original.log_level, deserialized.log_level);
+        assert_eq!(original.hook_installed, deserialized.hook_installed);
+    }
+
+    #[test]
+    fn test_get_task_hooks_dir_fallback() {
+        // Test that get_task_hooks_dir returns a path
+        let result = TimewarriorIntegration::get_task_hooks_dir();
+        
+        // Should either succeed or fail, but not panic
+        if let Ok(path) = result {
+            // If successful, path should end with hooks
+            assert!(path.to_string_lossy().contains("hooks"));
+        }
+    }
+}
