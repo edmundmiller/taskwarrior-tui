@@ -12,6 +12,7 @@ So `color.active` will take precedence over `color.overdue`. You can see what `c
 The following color attributes are supported:
 
 ```plaintext
+# Task status colors
 color.deleted
 color.completed
 color.active
@@ -23,7 +24,27 @@ color.blocked
 color.blocking
 color.recurring
 color.tagged
+
+# Calendar-specific colors
+color.calendar.due.today
+color.calendar.overdue
+color.calendar.weekend
+color.calendar.holiday
 ```
+
+## Task Status Colors
+
+- `color.deleted` - Color for deleted tasks
+- `color.completed` - Color for completed tasks
+- `color.active` - Color for active (currently being worked on) tasks
+- `color.overdue` - Color for overdue tasks
+- `color.scheduled` - Color for scheduled tasks
+- `color.due.today` - Color for tasks due today
+- `color.due` - Color for tasks with due dates
+- `color.blocked` - Color for blocked tasks
+- `color.blocking` - Color for tasks that are blocking other tasks
+- `color.recurring` - Color for recurring tasks
+- `color.tagged` - Color for tagged tasks
 
 ## Calendar Colors
 
