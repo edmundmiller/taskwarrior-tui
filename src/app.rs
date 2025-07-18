@@ -50,7 +50,8 @@ use crate::{
   scrollbar::Scrollbar,
   table::{Row, Table, TableMode, TaskwarriorTuiTableState},
   task_report::TaskReportTable,
-  utils,
+  timewarrior::TimewarriorIntegration,
+  ui, utils,
 };
 
 const MAX_LINE: usize = 4096;
@@ -201,6 +202,7 @@ pub struct TaskwarriorTui {
   pub requires_redraw: bool,
   pub changes: utils::Changeset,
   pub backend: Box<dyn crate::backend::TaskBackend>,
+  pub timewarrior: TimewarriorIntegration,
 }
 
 impl TaskwarriorTui {
@@ -316,6 +318,7 @@ impl TaskwarriorTui {
       requires_redraw: false,
       changes: utils::Changeset::default(),
       backend,
+      timewarrior: TimewarriorIntegration::default(),
     };
 
     for c in app.config.filter.chars() {
@@ -877,6 +880,81 @@ impl TaskwarriorTui {
           0,
           false,
           self.error.clone(),
+        );
+      }
+      Action::TimewarriorInstallHook => {
+        let label = "Install Timewarrior Hook";
+        self.draw_command(
+          f,
+          rects[1],
+          "Installing timewarrior hook...",
+          (Span::styled(label, Style::default().add_modifier(Modifier::BOLD)), None),
+          0,
+          false,
+          None,
+        );
+      }
+      Action::TimewarriorUninstallHook => {
+        let label = "Uninstall Timewarrior Hook";
+        self.draw_command(
+          f,
+          rects[1],
+          "Uninstalling timewarrior hook...",
+          (Span::styled(label, Style::default().add_modifier(Modifier::BOLD)), None),
+          0,
+          false,
+          None,
+        );
+      }
+      Action::TimewarriorStatus => {
+        let label = "Timewarrior Status";
+        let status = self.timewarrior.get_status();
+        let mut status_text = Vec::new();
+        
+        if status.timewarrior_available {
+          status_text.push("✅ Timewarrior available".to_string());
+        } else {
+          status_text.push("❌ Timewarrior not available".to_string());
+        }
+        
+        if status.hook_installed {
+          status_text.push("✅ Hook installed".to_string());
+        } else {
+          status_text.push("❌ Hook not installed".to_string());
+        }
+        
+        if status.integration_enabled {
+          status_text.push("✅ Integration enabled".to_string());
+        } else {
+          status_text.push("❌ Integration disabled".to_string());
+        }
+        
+        if let Some(tracking) = &status.active_tracking {
+          status_text.push(format!("⏱️  Active: {} ({})", tracking.tags, tracking.duration));
+        } else {
+          status_text.push("⏸️  No active tracking".to_string());
+        }
+        
+        self.draw_command(
+          f,
+          rects[1],
+          "Press any key to continue.",
+          (Span::styled(label, Style::default().add_modifier(Modifier::BOLD)), None),
+          0,
+          false,
+          Some(status_text.join("\n")),
+        );
+      }
+      Action::TimewarriorConfig => {
+        let label = "Timewarrior Configuration";
+        self.draw_command(
+          f,
+          rects[1],
+          "Timewarrior configuration...",
+          (Span::styled(label, Style::default().add_modifier(Modifier::BOLD)), None),
+          0,
+          false,
+          None,
         );
       }
     }
@@ -1475,7 +1553,31 @@ impl TaskwarriorTui {
       }
     }
     drop(tx);
-    while let Some(Some((task_uuid, data))) = rx.recv().await {
+    while let Some(Some((task_uuid, mut data))) = rx.recv().await {
+      // Append timewarrior information if integration is enabled
+      if self.timewarrior.get_config().enabled {
+        let timewarrior_status = self.timewarrior.get_status();
+        data.push_str("\n\n─────────────────────────────────────────────────────────────────────────────────\n");
+        data.push_str("TIMEWARRIOR INTEGRATION\n");
+        data.push_str("─────────────────────────────────────────────────────────────────────────────────\n");
+        
+        if timewarrior_status.timewarrior_available {
+          data.push_str(&format!("Status: Available\n"));
+          data.push_str(&format!("Hook installed: {}\n", if timewarrior_status.hook_installed { "Yes" } else { "No" }));
+          data.push_str(&format!("Integration enabled: {}\n", if timewarrior_status.integration_enabled { "Yes" } else { "No" }));
+          
+          if let Some(active_info) = &timewarrior_status.active_tracking {
+            data.push_str(&format!("Active tracking: Yes\n"));
+            data.push_str(&format!("Tags: {}\n", active_info.tags));
+            data.push_str(&format!("Duration: {}\n", active_info.duration));
+          } else {
+            data.push_str("Active tracking: No\n");
+          }
+        } else {
+          data.push_str("Status: Not available\n");
+        }
+      }
+      
       self.task_details.insert(task_uuid, data);
     }
     Ok(())
@@ -2080,15 +2182,41 @@ impl TaskwarriorTui {
 
     for task_uuid in &task_uuids {
       let mut command = "start";
+      let mut is_active = false;
       for tag in TaskwarriorTui::task_virtual_tags(*task_uuid).unwrap_or_default().split(' ') {
         if tag == "ACTIVE" {
           command = "stop";
+          is_active = true;
         }
       }
 
       let output = std::process::Command::new("task").arg(task_uuid.to_string()).arg(command).output();
       if output.is_err() {
         return Err(format!("Error running `task {}` for task `{}`.", command, task_uuid));
+      }
+
+      // Check timewarrior status after task operation
+      if self.timewarrior.get_config().enabled {
+        let timewarrior_status = self.timewarrior.get_status();
+        if timewarrior_status.timewarrior_available {
+          if is_active {
+            // Task was stopped
+            if timewarrior_status.active_tracking.is_some() {
+              self.error = Some(format!("Task stopped. Timewarrior tracking automatically stopped."));
+            } else {
+              self.error = Some(format!("Task stopped. No active timewarrior tracking detected."));
+            }
+          } else {
+            // Task was started
+            if timewarrior_status.active_tracking.is_some() {
+              self.error = Some(format!("Task started. Timewarrior tracking automatically started."));
+            } else {
+              self.error = Some(format!("Task started. Check timewarrior integration if tracking expected."));
+            }
+          }
+        } else {
+          self.error = Some(format!("Task {}, but timewarrior is not available.", if is_active { "stopped" } else { "started" }));
+        }
       }
     }
 
@@ -3569,6 +3697,36 @@ impl TaskwarriorTui {
           } else {
             handle_movement(&mut self.command, input, &mut self.changes);
           }
+        }
+        Action::TimewarriorInstallHook => {
+          match self.timewarrior.install_hook() {
+            Ok(_) => {
+              self.mode = Mode::Tasks(Action::Report);
+              self.update(true).await?;
+            }
+            Err(e) => {
+              self.error = Some(e.to_string());
+              self.mode = Mode::Tasks(Action::Error);
+            }
+          }
+        }
+        Action::TimewarriorUninstallHook => {
+          match self.timewarrior.uninstall_hook() {
+            Ok(_) => {
+              self.mode = Mode::Tasks(Action::Report);
+              self.update(true).await?;
+            }
+            Err(e) => {
+              self.error = Some(e.to_string());
+              self.mode = Mode::Tasks(Action::Error);
+            }
+          }
+        }
+        Action::TimewarriorStatus => {
+          self.mode = Mode::Tasks(Action::Report);
+        }
+        Action::TimewarriorConfig => {
+          self.mode = Mode::Tasks(Action::Report);
         }
         Action::Error => {
           // since filter live updates, don't reset error status

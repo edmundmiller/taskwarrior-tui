@@ -14,4 +14,8 @@ pub enum Action {
   UndoPrompt,
   DonePrompt,
   Error,
+  TimewarriorInstallHook,
+  TimewarriorUninstallHook,
+  TimewarriorStatus,
+  TimewarriorConfig,
 }

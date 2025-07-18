@@ -18,6 +18,7 @@ mod pane;
 mod scrollbar;
 mod table;
 mod task_report;
+mod timewarrior;
 mod ui;
 mod utils;
 

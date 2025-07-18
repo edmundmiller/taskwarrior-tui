@@ -19,6 +19,7 @@ pub mod utils;
 pub mod backend;
 pub mod action;
 pub mod cli;
+pub mod timewarrior;
 
 // Re-export commonly used types
 pub use app::TaskwarriorTui;

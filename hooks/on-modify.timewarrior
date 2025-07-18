@@ -1,0 +1,247 @@
+#!/usr/bin/env python3
+"""
+Enhanced Taskwarrior on-modify Hook for Timewarrior Integration
+
+This hook provides improved integration between Taskwarrior and Timewarrior
+by automatically starting/stopping time tracking when tasks start/stop.
+
+Features:
+- Automatic timewarrior tracking on task start/stop
+- Configurable tag mapping between taskwarrior and timewarrior
+- Enhanced error handling and logging
+- Support for multiple active tasks
+- Graceful handling of timewarrior unavailability
+
+Installation:
+    cp on-modify.timewarrior ~/.task/hooks/
+    chmod +x ~/.task/hooks/on-modify.timewarrior
+
+Configuration (in .taskrc):
+    # Enable/disable timewarrior integration
+    uda.timewarrior.enabled=true
+    
+    # Tag mapping (optional)
+    uda.timewarrior.tag.prefix=tw_
+    
+    # Include project in timewarrior tags
+    uda.timewarrior.include.project=true
+    
+    # Include task description in timewarrior tags
+    uda.timewarrior.include.description=false
+    
+    # Log level (debug, info, warning, error)
+    uda.timewarrior.log.level=info
+"""
+
+import json
+import subprocess
+import sys
+import os
+import logging
+from datetime import datetime
+from typing import Dict, List, Optional, Any
+
+# Configure logging
+log_level = os.environ.get('TASKWARRIOR_TUI_LOG_LEVEL', 'INFO').upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.expanduser('~/.local/share/taskwarrior-tui/timewarrior-hook.log')),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('timewarrior-hook')
+
+class TimewarriorHook:
+    """Enhanced Timewarrior integration hook for Taskwarrior"""
+    
+    def __init__(self):
+        self.config = {}
+        self.load_config()
+        
+    def load_config(self):
+        """Load configuration from taskwarrior"""
+        try:
+            result = subprocess.run(['task', '_get', 'rc.uda.timewarrior.enabled'], 
+                                  capture_output=True, text=True, timeout=5)
+            self.config['enabled'] = result.stdout.strip().lower() == 'true'
+        except:
+            self.config['enabled'] = True  # Default to enabled
+            
+        # Load other configuration options
+        config_options = {
+            'tag.prefix': '',
+            'include.project': 'true',
+            'include.description': 'false',
+            'log.level': 'info'
+        }
+        
+        for key, default in config_options.items():
+            try:
+                result = subprocess.run(['task', '_get', f'rc.uda.timewarrior.{key}'], 
+                                      capture_output=True, text=True, timeout=5)
+                self.config[key] = result.stdout.strip() or default
+            except:
+                self.config[key] = default
+                
+        logger.info(f"Loaded config: {self.config}")
+    
+    def check_timewarrior_available(self) -> bool:
+        """Check if timewarrior is available"""
+        try:
+            result = subprocess.run(['timew', '--version'], 
+                                  capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except:
+            return False
+    
+    def extract_tags(self, task: Dict[str, Any]) -> List[str]:
+        """Extract tags from task for timewarrior"""
+        tags = []
+        
+        # Add task tags
+        if 'tags' in task:
+            if isinstance(task['tags'], list):
+                tags.extend(task['tags'])
+            elif isinstance(task['tags'], str):
+                tags.extend([tag.strip() for tag in task['tags'].split(',')])
+        
+        # Add project as tag if configured
+        if (self.config.get('include.project', 'true').lower() == 'true' and 
+            'project' in task and task['project']):
+            tags.append(f"project:{task['project']}")
+            
+        # Add description as tag if configured
+        if (self.config.get('include.description', 'false').lower() == 'true' and 
+            'description' in task and task['description']):
+            # Clean description for use as tag
+            desc_tag = task['description'].replace(' ', '_').replace(':', '_')[:50]
+            tags.append(f"desc:{desc_tag}")
+            
+        # Add tag prefix if configured
+        prefix = self.config.get('tag.prefix', '')
+        if prefix:
+            tags = [f"{prefix}{tag}" for tag in tags]
+            
+        return tags
+    
+    def start_timewarrior(self, task: Dict[str, Any]) -> bool:
+        """Start timewarrior tracking for a task"""
+        if not self.check_timewarrior_available():
+            logger.warning("Timewarrior not available, skipping tracking")
+            return False
+            
+        tags = self.extract_tags(task)
+        
+        # Add UUID for tracking
+        tags.append(f"uuid:{task.get('uuid', 'unknown')}")
+        
+        try:
+            cmd = ['timew', 'start'] + tags
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            
+            if result.returncode == 0:
+                logger.info(f"Started timewarrior tracking for task {task.get('uuid', 'unknown')} with tags: {tags}")
+                return True
+            else:
+                logger.error(f"Failed to start timewarrior: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error starting timewarrior: {e}")
+            return False
+    
+    def stop_timewarrior(self, task: Dict[str, Any]) -> bool:
+        """Stop timewarrior tracking for a task"""
+        if not self.check_timewarrior_available():
+            logger.warning("Timewarrior not available, skipping tracking")
+            return False
+            
+        try:
+            # Get active intervals
+            result = subprocess.run(['timew', 'get', 'dom.active'], 
+                                  capture_output=True, text=True, timeout=5)
+            
+            if result.returncode == 0 and result.stdout.strip() == '1':
+                # Stop active tracking
+                stop_result = subprocess.run(['timew', 'stop'], 
+                                           capture_output=True, text=True, timeout=10)
+                
+                if stop_result.returncode == 0:
+                    logger.info(f"Stopped timewarrior tracking for task {task.get('uuid', 'unknown')}")
+                    return True
+                else:
+                    logger.error(f"Failed to stop timewarrior: {stop_result.stderr}")
+                    return False
+            else:
+                logger.info("No active timewarrior tracking to stop")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error stopping timewarrior: {e}")
+            return False
+    
+    def process_task_modification(self, old_task: Dict[str, Any], new_task: Dict[str, Any]):
+        """Process task modification and handle timewarrior integration"""
+        if not self.config.get('enabled', True):
+            logger.debug("Timewarrior integration disabled, skipping")
+            return
+            
+        # Check for task start
+        if 'start' in new_task and 'start' not in old_task:
+            logger.info(f"Task started: {new_task.get('description', 'Unknown')}")
+            self.start_timewarrior(new_task)
+            
+        # Check for task stop (completed, deleted, or start removed)
+        elif (('start' not in new_task or 'end' in new_task) and 
+              'start' in old_task):
+            logger.info(f"Task stopped: {old_task.get('description', 'Unknown')}")
+            self.stop_timewarrior(old_task)
+            
+        # Check for tag changes while task is active
+        elif ('start' in new_task and 'start' in old_task and 
+              new_task.get('tags', []) != old_task.get('tags', [])):
+            logger.info(f"Active task tags changed: {new_task.get('description', 'Unknown')}")
+            # Stop current tracking and start with new tags
+            self.stop_timewarrior(old_task)
+            self.start_timewarrior(new_task)
+
+def main():
+    """Main hook entry point"""
+    try:
+        # Read input from taskwarrior
+        input_data = sys.stdin.read()
+        if not input_data.strip():
+            logger.warning("No input data received")
+            return
+            
+        # Parse JSON input
+        lines = input_data.strip().split('\n')
+        if len(lines) < 2:
+            logger.error("Invalid input format")
+            return
+            
+        old_task = json.loads(lines[0]) if lines[0].strip() else {}
+        new_task = json.loads(lines[1]) if lines[1].strip() else {}
+        
+        # Create hook instance and process
+        hook = TimewarriorHook()
+        hook.process_task_modification(old_task, new_task)
+        
+        # Output the modified task (required by taskwarrior)
+        print(json.dumps(new_task))
+        
+    except Exception as e:
+        logger.error(f"Hook execution failed: {e}")
+        # Still output the task to avoid breaking taskwarrior
+        try:
+            if 'new_task' in locals():
+                print(json.dumps(new_task))
+            else:
+                print(input_data.strip().split('\n')[1])
+        except:
+            pass
+
+if __name__ == '__main__':
+    main()
