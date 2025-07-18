@@ -54,9 +54,17 @@ use crate::{action::Action, event::Event, keyconfig::KeyConfig};
 const LOG_PATTERN: &str = "{d(%Y-%m-%d %H:%M:%S)} | {l} | {f}:{L} | {m}{n}";
 
 pub fn destruct_terminal() {
-  disable_raw_mode().unwrap();
-  execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture).unwrap();
-  execute!(io::stdout(), cursor::Show).unwrap();
+  // Try to restore terminal state gracefully, but don't panic on errors
+  // since this is often called during error handling or shutdown
+  if let Err(e) = disable_raw_mode() {
+    eprintln!("Warning: Failed to disable raw mode: {}", e);
+  }
+  if let Err(e) = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture) {
+    eprintln!("Warning: Failed to leave alternate screen: {}", e);
+  }
+  if let Err(e) = execute!(io::stdout(), cursor::Show) {
+    eprintln!("Warning: Failed to show cursor: {}", e);
+  }
 }
 
 pub fn initialize_logging() {

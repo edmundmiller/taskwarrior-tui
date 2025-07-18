@@ -238,7 +238,7 @@ impl TaskwarriorTui {
 
     let task_version = Versioning::new(String::from_utf8_lossy(&output.stdout).trim()).context("Unable to get version string")?;
 
-    let (w, h) = crossterm::terminal::size().unwrap_or((50, 15));
+    let (w, h) = crossterm::terminal::size().unwrap_or((100, 30));
 
     let tick_rate = if c.uda_tick_rate > 0 {
       Some(std::time::Duration::from_millis(c.uda_tick_rate))

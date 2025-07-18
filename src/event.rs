@@ -74,7 +74,8 @@ impl EventLoop {
               },
               _ = _tx.closed() => break,
               maybe_event = event => {
-                  if let Some(Ok(crossterm::event::Event::Key(key))) = maybe_event {
+                  match maybe_event {
+                      Some(Ok(crossterm::event::Event::Key(key))) => {
                       let key = match key.code {
                           Backspace => {
                               match key.modifiers {
@@ -114,6 +115,25 @@ impl EventLoop {
                           _ => KeyCode::Null,
                       };
                       _tx.send(Event::Input(key)).unwrap_or_else(|_| warn!("Unable to send {:?} event", key));
+                      }
+                      Some(Ok(crossterm::event::Event::Resize(_, _))) => {
+                          // Handle terminal resize events
+                          // The main loop will handle the actual resize via terminal.resize()
+                          // We just need to trigger a redraw
+                          _tx.send(Event::Tick).unwrap_or_else(|_| warn!("Unable to send Tick event for resize"));
+                      }
+                      Some(Err(e)) => {
+                          warn!("Error reading crossterm event: {}", e);
+                      }
+                      None => {
+                          // Event stream ended
+                          warn!("Crossterm event stream ended unexpectedly");
+                          break;
+                      }
+                      _ => {
+                          // Other events (mouse, focus, paste) are currently ignored
+                          // This is intentional to keep the event loop simple
+                      }
                   }
               }
           }
