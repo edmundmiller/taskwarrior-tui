@@ -50,8 +50,7 @@ use crate::{
   scrollbar::Scrollbar,
   table::{Row, Table, TableMode, TaskwarriorTuiTableState},
   task_report::TaskReportTable,
-  timewarrior::TimewarriorIntegration,
-  ui, utils,
+  timewarrior::TimewarriorIntegration, utils,
 };
 
 const MAX_LINE: usize = 4096;
@@ -1557,9 +1556,9 @@ impl TaskwarriorTui {
       // Append timewarrior information if integration is enabled
       if self.timewarrior.get_config().enabled {
         let timewarrior_status = self.timewarrior.get_status();
-        data.push_str("\n\n─────────────────────────────────────────────────────────────────────────────────\n");
+        data.push_str("\n\n──────────────────────────────────────────────────────\n");
         data.push_str("TIMEWARRIOR INTEGRATION\n");
-        data.push_str("─────────────────────────────────────────────────────────────────────────────────\n");
+        data.push_str("──────────────────────────────────────────────────────\n");
         
         if timewarrior_status.timewarrior_available {
           data.push_str(&format!("Status: Available\n"));
@@ -3950,10 +3949,8 @@ pub fn remove_tag(task: &mut Task, tag: &str) {
 #[allow(clippy::single_char_pattern)]
 mod tests {
   use std::{
-    ffi::OsStr,
     fmt::Write,
     fs::File,
-    io,
     path::{Path, PathBuf},
   };
 
@@ -3998,7 +3995,7 @@ mod tests {
   }
 
   fn setup() {
-    use std::process::Stdio;
+    
     let mut f = File::open(get_taskdata_path().parent().unwrap().join("export.json")).unwrap();
     let mut s = String::new();
     f.read_to_string(&mut s).unwrap();

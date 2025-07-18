@@ -1,6 +1,7 @@
 // Based on https://gist.github.com/diwic/5c20a283ca3a03752e1a27b0f3ebfa30
 // See https://old.reddit.com/r/rust/comments/4xneq5/the_calendar_example_challenge_ii_why_eddyb_all/
 
+const COL_WIDTH: usize = 21;
 use chrono::{Datelike, Duration, Local, Month, NaiveDate};
 use ratatui::{
   buffer::Buffer,

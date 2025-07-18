@@ -1,5 +1,6 @@
 use anyhow::{Context as AnyhowContext, Result};
 
+const COL_WIDTH: usize = 21;
 const PROJECT_HEADER: &str = "Name";
 const REMAINING_TASK_HEADER: &str = "Remaining";
 const AVG_AGE_HEADER: &str = "Avg age";

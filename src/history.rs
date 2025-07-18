@@ -1,11 +1,7 @@
-use std::{
-  path::PathBuf,
-};
+use std::path::PathBuf;
 
 use anyhow::Result;
-use rustyline::{
-  history::{DefaultHistory, History, SearchDirection},
-};
+use rustyline::history::{DefaultHistory, History, SearchDirection};
 
 pub struct HistoryContext {
   history: DefaultHistory,

@@ -1,12 +1,11 @@
 use std::{
     fs,
-    io::{self, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
 
 use anyhow::{anyhow, Context, Result};
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for timewarrior integration

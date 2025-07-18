@@ -5,9 +5,7 @@ const TYPE: &str = "Remaining";
 const DEFINITION: &str = "Avg age";
 const ACTIVE: &str = "Complete";
 
-use std::{
-  process::Command,
-};
+use std::process::Command;
 
 use crate::table::TaskwarriorTuiTableState;
 

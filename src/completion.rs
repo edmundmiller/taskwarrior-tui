@@ -1,6 +1,4 @@
-use ratatui::{
-  widgets::{ListState},
-};
+use ratatui::widgets::ListState;
 use rustyline::{
   history::FileHistory,
   Context,

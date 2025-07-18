@@ -1,13 +1,10 @@
 use crossterm::event::{
-  KeyCode::{BackTab, Backspace, Char, Delete, Down, End, Enter, Esc, Home, Insert, Left, Null, PageDown, PageUp, Right, Tab, Up, F},
-  KeyModifiers,
+  KeyCode::{BackTab, Backspace, Char, Delete, Down, End, Enter, Esc, Home, Insert, Left, Null, PageDown, PageUp, Right, Tab, Up, F}, KeyModifiers,
 };
 use futures::StreamExt;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use tokio::{
-  sync::mpsc,
-};
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Event<I> {

@@ -498,7 +498,13 @@ impl TaskReportTable {
         if self.description_width >= c.len() {
           available_width = self.description_width - c.len();
         }
-        let (d, _) = d.unicode_truncate(available_width);
+        // Add bounds checking to prevent unicode_truncate assertion failures
+        let safe_width = std::cmp::min(available_width, d.len());
+        let (d, _) = if safe_width > 0 && safe_width <= d.len() {
+          d.unicode_truncate(safe_width)
+        } else {
+          (d.as_str(), d.len())
+        };
         let mut d = d.to_string();
         if d != *task.description() {
           d = format!("{}\u{2026}", d);
@@ -508,7 +514,13 @@ impl TaskReportTable {
       "description.truncated" => {
         let d = task.description().to_string();
         let available_width = self.description_width;
-        let (d, _) = d.unicode_truncate(available_width);
+        // Add bounds checking to prevent unicode_truncate assertion failures
+        let safe_width = std::cmp::min(available_width, d.len());
+        let (d, _) = if safe_width > 0 && safe_width <= d.len() {
+          d.unicode_truncate(safe_width)
+        } else {
+          (d.as_str(), d.len())
+        };
         let mut d = d.to_string();
         if d != *task.description() {
           d = format!("{}\u{2026}", d);
