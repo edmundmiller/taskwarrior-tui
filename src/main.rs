@@ -111,9 +111,10 @@ async fn tui_main(report: &str) -> Result<()> {
     better_panic::Settings::auto().create_panic_handler()(panic_info);
   }));
 
-  let mut app = app::TaskwarriorTui::new(report, true).await?;
+  let mut app = app::TaskwarriorTui::new(report, false).await?;
 
   let mut terminal = app.start_tui()?;
+  app.resume_event_loop().await?;
 
   let r = app.run(&mut terminal).await;
 
