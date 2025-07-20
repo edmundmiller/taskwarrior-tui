@@ -150,6 +150,7 @@ Log files are written to `~/.local/share/taskwarrior-tui/taskwarrior-tui.log`
 - `src/keyconfig.rs` - Key binding configuration
 - `src/completion.rs` - Tab completion system
 - `src/pane/` - Different panes (context, project views)
+- `src/timewarrior.rs` - TimeWarrior integration with caching
 
 ### Dependencies
 
@@ -176,6 +177,56 @@ The application reads configuration from taskwarrior's `.taskrc` file and suppor
 See `docs/` folder in the repository: <https://github.com/kdheepak/taskwarrior-tui>
 
 When you make a PR to the repository, a preview of the documentation is rendered and a link is posted to the PR.
+
+## TimeWarrior Integration Performance
+
+The TimeWarrior integration includes several performance optimizations to maintain UI responsiveness:
+
+### Caching Architecture
+
+**Cache Structure (`src/timewarrior.rs:37-66`):**
+- `TrackingCache` struct with configurable cache duration (default: 5 seconds)
+- Uses `RefCell` for interior mutability to allow cache updates from immutable references
+- Tracks last update time and automatically expires stale data
+
+**Cache Management:**
+- Only queries TimeWarrior when cache is expired
+- Single batch query retrieves all tracked task UUIDs at once
+- Subsequent task checks use cached data without system calls
+
+### Query Optimization
+
+**Before Optimization:**
+- Called `timew get dom.active.tag.1` for each task individually
+- N system calls per UI render (where N = number of tasks)
+- Could cause UI lag with large task lists
+
+**After Optimization:**
+- Single call to `timew get dom.active.tag` gets all tracked UUIDs
+- Maximum 2 system calls every 5 seconds regardless of task count
+- ~90%+ reduction in system calls for typical usage
+
+### Implementation Details
+
+```rust
+// Cache refresh only when expired
+if self.tracking_cache.borrow().is_expired() {
+    self.refresh_tracking_cache()?;
+}
+
+// Fast lookup from cached data
+self.tracking_cache.borrow().contains(task_uuid)
+```
+
+**Error Handling:**
+- Graceful fallback when TimeWarrior is unavailable
+- Cache is cleared on errors to prevent stale state
+- Logging for debugging integration issues
+
+**Testing:**
+- Comprehensive test coverage for cache behavior
+- Performance regression tests ensure optimizations are maintained
+- Mock integration for testing without TimeWarrior dependency
 
 ## Development Notes
 

@@ -1283,6 +1283,11 @@ impl TaskwarriorTui {
       }
     }
 
+    // Check if task is being tracked by TimeWarrior and apply highlighting
+    if self.timewarrior.is_task_being_tracked(&task.uuid().to_string()) {
+      style = style.patch(self.config.uda_style_timewarrior_tracking);
+    }
+
     style
   }
 

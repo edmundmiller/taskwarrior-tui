@@ -97,6 +97,7 @@ pub struct Config {
   pub uda_style_command: Style,
   pub uda_style_report_completion_pane: Style,
   pub uda_style_report_completion_pane_highlight: Style,
+  pub uda_style_timewarrior_tracking: Style,
   pub uda_shortcuts: Vec<String>,
   pub uda_change_focus_rotate: bool,
   pub uda_background_process: String,
@@ -166,6 +167,7 @@ impl Config {
     let uda_style_context_active = Self::get_uda_style("context.active", data);
     let uda_style_report_completion_pane = Self::get_uda_style("report.completion-pane", data);
     let uda_style_report_completion_pane_highlight = Self::get_uda_style("report.completion-pane-highlight", data);
+    let uda_style_timewarrior_tracking = Self::get_uda_style("timewarrior.tracking", data);
     let uda_shortcuts = Self::get_uda_shortcuts(data);
     let uda_background_process = Self::get_uda_background_process(data);
     let uda_background_process_period = Self::get_uda_background_process_period(data);
@@ -180,6 +182,7 @@ impl Config {
     let uda_style_report_completion_pane =
       uda_style_report_completion_pane.unwrap_or_else(|| Style::default().fg(Color::Black).bg(Color::Rgb(223, 223, 223)));
     let uda_style_report_completion_pane_highlight = uda_style_report_completion_pane_highlight.unwrap_or(uda_style_report_completion_pane);
+    let uda_style_timewarrior_tracking = uda_style_timewarrior_tracking.unwrap_or_else(|| Style::default().fg(Color::Green).add_modifier(Modifier::BOLD));
     let uda_quick_tag_name = Self::get_uda_quick_tag_name(data);
     let uda_task_report_prompt_on_undo = Self::get_uda_task_report_prompt_on_undo(data);
     let uda_task_report_prompt_on_delete = Self::get_uda_task_report_prompt_on_delete(data);
@@ -255,6 +258,7 @@ impl Config {
       uda_style_command,
       uda_style_report_completion_pane,
       uda_style_report_completion_pane_highlight,
+      uda_style_timewarrior_tracking,
       uda_style_report_scrollbar,
       uda_style_report_scrollbar_area,
       uda_backend,

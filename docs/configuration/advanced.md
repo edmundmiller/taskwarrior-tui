@@ -71,6 +71,14 @@ uda.taskwarrior-tui.style.report.scrollbar=black
 uda.taskwarrior-tui.style.report.scrollbar.area=white
 uda.taskwarrior-tui.style.report.completion-pane=black on rgb(223,223,223)
 uda.taskwarrior-tui.style.report.completion-pane-highlight=black on rgb(223,223,223)
+uda.taskwarrior-tui.style.timewarrior.tracking=green bold
+
+# TimeWarrior integration
+uda.timewarrior.enabled=true
+uda.timewarrior.tag.prefix=
+uda.timewarrior.include.project=true
+uda.timewarrior.include.description=false
+uda.timewarrior.log.level=info
 ```
 
 ## Configuration Options Explained
@@ -141,6 +149,17 @@ uda.taskwarrior-tui.style.report.completion-pane-highlight=black on rgb(223,223,
 - `uda.taskwarrior-tui.style.report.scrollbar.area` - Style for scrollbar area (default: white)
 - `uda.taskwarrior-tui.style.report.completion-pane` - Style for completion pane (default: black on rgb(223,223,223))
 - `uda.taskwarrior-tui.style.report.completion-pane-highlight` - Style for highlighted completion pane items (default: matches completion-pane)
+- `uda.taskwarrior-tui.style.timewarrior.tracking` - Style for tasks currently being tracked by TimeWarrior (default: green bold)
+
+### TimeWarrior Integration
+
+- `uda.timewarrior.enabled` - Enable TimeWarrior integration (default: true)
+- `uda.timewarrior.tag.prefix` - Prefix for TimeWarrior tags (default: empty)
+- `uda.timewarrior.include.project` - Include project name in TimeWarrior tags (default: true)
+- `uda.timewarrior.include.description` - Include task description in TimeWarrior tags (default: false)
+- `uda.timewarrior.log.level` - Log level for TimeWarrior integration (default: info)
+
+The TimeWarrior integration allows automatic time tracking when you start and stop tasks in taskwarrior-tui. When a task is actively being tracked by TimeWarrior, it will be highlighted in the task list using the style configured by `uda.taskwarrior-tui.style.timewarrior.tracking`.
 
 The `uda.taskwarrior-tui.task-report.next.filter` variable defines the default view at program
 startup. Set this to any preconfigured report (`task reports`), or create your own report in

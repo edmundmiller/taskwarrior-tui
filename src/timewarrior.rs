@@ -2,6 +2,9 @@ use std::{
     fs,
     path::PathBuf,
     process::Command,
+    time::{Duration, Instant},
+    collections::HashSet,
+    cell::RefCell,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -32,10 +35,42 @@ impl Default for TimewarriorConfig {
     }
 }
 
+/// Cache for tracking information
+#[derive(Debug, Clone)]
+struct TrackingCache {
+    tracked_task_uuids: HashSet<String>,
+    last_updated: Instant,
+    cache_duration: Duration,
+}
+
+impl TrackingCache {
+    fn new() -> Self {
+        Self {
+            tracked_task_uuids: HashSet::new(),
+            last_updated: Instant::now() - Duration::from_secs(10), // Force initial refresh
+            cache_duration: Duration::from_secs(5), // 5 second cache
+        }
+    }
+
+    fn is_expired(&self) -> bool {
+        self.last_updated.elapsed() > self.cache_duration
+    }
+
+    fn update(&mut self, tracked_uuids: HashSet<String>) {
+        self.tracked_task_uuids = tracked_uuids;
+        self.last_updated = Instant::now();
+    }
+
+    fn contains(&self, uuid: &str) -> bool {
+        self.tracked_task_uuids.contains(uuid)
+    }
+}
+
 /// Timewarrior integration handler
 pub struct TimewarriorIntegration {
     config: TimewarriorConfig,
     task_hooks_dir: PathBuf,
+    tracking_cache: RefCell<TrackingCache>,
 }
 
 impl TimewarriorIntegration {
@@ -46,6 +81,7 @@ impl TimewarriorIntegration {
         Ok(Self {
             config,
             task_hooks_dir,
+            tracking_cache: RefCell::new(TrackingCache::new()),
         })
     }
 
@@ -296,6 +332,78 @@ impl TimewarriorIntegration {
         None
     }
 
+    /// Refresh the cache with all currently tracked task UUIDs
+    fn refresh_tracking_cache(&self) -> Result<()> {
+        if !Self::check_timewarrior_available() || !self.config.enabled {
+            self.tracking_cache.borrow_mut().update(HashSet::new());
+            return Ok(());
+        }
+
+        // Check if timewarrior is actively tracking
+        let output = Command::new("timew")
+            .arg("get")
+            .arg("dom.active")
+            .output()?;
+
+        if !output.status.success() {
+            self.tracking_cache.borrow_mut().update(HashSet::new());
+            return Ok(());
+        }
+
+        let active = String::from_utf8_lossy(&output.stdout);
+        if active.trim() != "1" {
+            // No active tracking
+            self.tracking_cache.borrow_mut().update(HashSet::new());
+            return Ok(());
+        }
+
+        // Get all active tracking tags
+        let tags_output = Command::new("timew")
+            .arg("get")
+            .arg("dom.active.tag")
+            .output()?;
+
+        if !tags_output.status.success() {
+            self.tracking_cache.borrow_mut().update(HashSet::new());
+            return Ok(());
+        }
+
+        let tags = String::from_utf8_lossy(&tags_output.stdout);
+        let mut tracked_uuids = HashSet::new();
+        
+        // Parse all tags to find UUID references
+        for tag in tags.split_whitespace() {
+            if let Some(uuid) = tag.strip_prefix("uuid:") {
+                tracked_uuids.insert(uuid.to_string());
+            }
+        }
+
+        self.tracking_cache.borrow_mut().update(tracked_uuids);
+        Ok(())
+    }
+
+    /// Check if a specific task is currently being tracked by TimeWarrior
+    pub fn is_task_being_tracked(&self, task_uuid: &str) -> bool {
+        if !Self::check_timewarrior_available() || !self.config.enabled {
+            return false;
+        }
+
+        // Refresh cache if expired
+        if self.tracking_cache.borrow().is_expired() {
+            if let Err(e) = self.refresh_tracking_cache() {
+                warn!("Failed to refresh TimeWarrior tracking cache: {}", e);
+                return false;
+            }
+        }
+
+        self.tracking_cache.borrow().contains(task_uuid)
+    }
+
+    /// Force refresh the tracking cache (useful after task start/stop operations)
+    pub fn force_refresh_tracking_cache(&self) -> Result<()> {
+        self.refresh_tracking_cache()
+    }
+
     /// Generate setup instructions for the user
     pub fn get_setup_instructions(&self) -> Vec<String> {
         let mut instructions = Vec::new();
@@ -349,6 +457,7 @@ impl Default for TimewarriorIntegration {
         Self::new().unwrap_or_else(|_| Self {
             config: TimewarriorConfig::default(),
             task_hooks_dir: PathBuf::from("~/.task/hooks"),
+            tracking_cache: RefCell::new(TrackingCache::new()),
         })
     }
 }
@@ -449,5 +558,37 @@ mod tests {
             // If successful, path should end with hooks
             assert!(path.to_string_lossy().contains("hooks"));
         }
+    }
+
+    #[test]
+    fn test_is_task_being_tracked_when_disabled() {
+        let mut integration = TimewarriorIntegration::default();
+        integration.config.enabled = false;
+        
+        // Should return false when integration is disabled
+        assert!(!integration.is_task_being_tracked("some-uuid"));
+    }
+
+    #[test]
+    fn test_is_task_being_tracked_when_enabled() {
+        let integration = TimewarriorIntegration::default();
+        
+        // Should not panic when checking task tracking
+        // (Result depends on whether timewarrior is available and what's being tracked)
+        let _result = integration.is_task_being_tracked("test-uuid-123");
+    }
+
+    #[test]
+    fn test_tracking_cache_functionality() {
+        let integration = TimewarriorIntegration::default();
+        
+        // First call should attempt to refresh cache
+        let result1 = integration.is_task_being_tracked("test-uuid-123");
+        
+        // Second call should use cache (if within cache duration)
+        let result2 = integration.is_task_being_tracked("test-uuid-123");
+        
+        // Results should be consistent
+        assert_eq!(result1, result2);
     }
 }
